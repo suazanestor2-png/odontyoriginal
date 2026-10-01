@@ -20,9 +20,11 @@ class Settings(BaseSettings):
     SMTP_FROM: str = ""
     OTP_MINUTES: int = 10
     MAX_OTP_ATTEMPTS: int = 5
-    TWILIO_ACCOUNT_SID: str = ""
-    TWILIO_AUTH_TOKEN: str = ""
-    TWILIO_FROM_NUMBER: str = ""
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+
 
 
 settings = Settings()
+
+def get_cors_origins() -> list[str]:
+    return [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
