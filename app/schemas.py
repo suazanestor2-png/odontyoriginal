@@ -38,6 +38,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     document_number: str = Field(pattern=r"^[0-9A-Za-z]{5,20}$")
     full_name: str = Field(min_length=3, max_length=150)
+    phone_number: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
     password: str
 
     _pw = field_validator("password")(validate_password_strength)

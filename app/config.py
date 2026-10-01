@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     SMTP_FROM: str = ""
     OTP_MINUTES: int = 10
     MAX_OTP_ATTEMPTS: int = 5
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_FROM_NUMBER: str = ""
 
 
 settings = Settings()

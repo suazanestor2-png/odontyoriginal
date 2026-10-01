@@ -80,6 +80,7 @@ class User(Base, AuditMixin):
 
     failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 class RefreshToken(Base, AuditMixin):
     __tablename__ = "refresh_tokens"

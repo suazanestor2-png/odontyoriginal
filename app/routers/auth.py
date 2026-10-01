@@ -20,6 +20,7 @@ from app.models import PasswordResetOtp
 from app.security import generate_otp_code, hash_otp_code
 from app.schemas import ForgotPasswordIn, ResetPasswordIn
 
+
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
 
 INVALID = HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenciales invalidas")
@@ -63,6 +64,7 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
         email=email,
         document_number=data.document_number,
         full_name=data.full_name.strip(),
+        phone_number=data.phone_number,
         hashed_password=hash_password(data.password),
         role_id=usuario_role.id,
     )
@@ -174,7 +176,6 @@ def forgot_password(data: ForgotPasswordIn, db: Session = Depends(get_db)):
             f"Este codigo vence en {settings.OTP_MINUTES} minutos.\n"
             "Si no solicitaste esto, ignora este mensaje."
         )
-
         html_body = f"""\
 <html>
   <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 24px;">
@@ -199,7 +200,6 @@ def forgot_password(data: ForgotPasswordIn, db: Session = Depends(get_db)):
   </body>
 </html>
 """
-
         send_email(
             to=user.email,
             subject="Codigo de recuperacion - Odonty",
