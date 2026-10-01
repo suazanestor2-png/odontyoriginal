@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     MFA_TOKEN_MINUTES: int = 5
     MAX_FAILED_ATTEMPTS: int = 5
     LOCK_MINUTES: int = 15
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    OTP_MINUTES: int = 10
+    MAX_OTP_ATTEMPTS: int = 5
 
 
 settings = Settings()

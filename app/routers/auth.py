@@ -6,10 +6,6 @@ from sqlalchemy.orm import Session
 
 from datetime import datetime, timezone
 
-from app.models import PasswordResetToken
-from app.schemas import ForgotPasswordIn, ResetPasswordIn
-from app.security import generate_reset_token, hash_reset_token
-
 from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
@@ -19,17 +15,15 @@ from app.security import create_token, decode_token, hash_password, verify_passw
 from app.schemas import MFACodeIn, MFALoginRequiredOut, MFASetupOut, MFAVerifyIn
 from app.security import generate_mfa_secret, get_totp_uri, verify_mfa_code
 from app.audit import log_event
+from app.email_service import send_email
+from app.models import PasswordResetOtp
+from app.security import generate_otp_code, hash_otp_code
+from app.schemas import ForgotPasswordIn, ResetPasswordIn
 
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
 
 INVALID = HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenciales invalidas")
 
-
-def find_user(db: Session, identifier: str) -> User | None:
-    identifier = identifier.strip()
-    if "@" in identifier:
-        return db.scalar(select(User).where(User.email == identifier.lower()))
-    return db.scalar(select(User).where(User.document_number == identifier))
 
 
 def to_user_out(user: User) -> UserOut:
@@ -80,10 +74,10 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenOut | MFALoginRequiredOut)
 def login(data: LoginIn, db: Session = Depends(get_db)):
-    user = find_user(db, data.identifier)
+    user = db.scalar(select(User).where(User.email == data.email.lower()))
 
     if not user:
-        log_event(db, "LOGIN_FAILED", detail=f"identifier={data.identifier} (no existe)")
+        log_event(db, "LOGIN_FAILED", detail=f"email={data.email} (no existe)")
         raise INVALID
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -104,7 +98,6 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Cuenta desactivada")
 
-    # Login correcto: reiniciamos el contador de fallos
     user.failed_attempts = 0
     db.commit()
 
@@ -167,36 +160,85 @@ def forgot_password(data: ForgotPasswordIn, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == data.email.lower()))
 
     if user and user.is_active:
-        raw_token = generate_reset_token()
-        db.add(PasswordResetToken(
+        code = generate_otp_code()
+        db.add(PasswordResetOtp(
             user_id=user.id,
-            token_hash=hash_reset_token(raw_token),
-            expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=settings.RESET_TOKEN_MINUTES),
+            code_hash=hash_otp_code(code),
+            expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=settings.OTP_MINUTES),
         ))
         db.commit()
 
-        # En produccion esto se envia por correo. Por ahora, lo imprimimos
-        # en la consola de uvicorn para poder probarlo sin configurar SMTP.
-        print(f"\n[DEV] Enlace de recuperacion para {user.email}:")
-        print(f"[DEV] token = {raw_token}\n")
+        text_body = (
+            f"Hola {user.full_name},\n\n"
+            f"Tu codigo de recuperacion es: {code}\n\n"
+            f"Este codigo vence en {settings.OTP_MINUTES} minutos.\n"
+            "Si no solicitaste esto, ignora este mensaje."
+        )
 
-    # Misma respuesta exista o no el correo, para no revelar informacion.
-    return {"detail": "Si el correo existe, recibiras instrucciones para recuperar tu contrasena"}
+        html_body = f"""\
+<html>
+  <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 24px;">
+    <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #1a1a2e; margin-top: 0;">Recuperacion de contrasena</h2>
+      <p style="color: #333; font-size: 15px;">Hola <strong>{user.full_name}</strong>,</p>
+      <p style="color: #333; font-size: 15px;">
+        Usa el siguiente codigo para restablecer tu contrasena en Odonty:
+      </p>
+      <div style="text-align: center; margin: 28px 0;">
+        <span style="display: inline-block; font-size: 32px; letter-spacing: 8px; font-weight: bold; color: #4f46e5; background: #eef2ff; padding: 16px 24px; border-radius: 8px;">
+          {code}
+        </span>
+      </div>
+      <p style="color: #666; font-size: 13px;">
+        Este codigo vence en {settings.OTP_MINUTES} minutos.
+      </p>
+      <p style="color: #999; font-size: 12px; margin-top: 24px;">
+        Si no solicitaste este cambio, puedes ignorar este correo con tranquilidad.
+      </p>
+    </div>
+  </body>
+</html>
+"""
+
+        send_email(
+            to=user.email,
+            subject="Codigo de recuperacion - Odonty",
+            body=text_body,
+            html_body=html_body,
+        )
+        log_event(db, "PASSWORD_RESET_REQUESTED", user.id)
+
+    return {"detail": "Si el correo existe, recibiras un codigo de recuperacion"}
 
 
 @router.post("/reset-password")
 def reset_password(data: ResetPasswordIn, db: Session = Depends(get_db)):
-    token_hash = hash_reset_token(data.token)
-    record = db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash))
+    user = db.scalar(select(User).where(User.email == data.email.lower()))
+    if not user:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Codigo invalido o expirado")
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    if not record or record.used or record.expires_at < now:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Token invalido o expirado")
+    otp = db.scalar(
+        select(PasswordResetOtp)
+        .where(PasswordResetOtp.user_id == user.id, PasswordResetOtp.used == False)
+        .order_by(PasswordResetOtp.id.desc())
+    )
 
-    user = db.get(User, record.user_id)
+    if not otp or otp.expires_at < now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Codigo invalido o expirado")
+
+    if otp.attempts >= settings.MAX_OTP_ATTEMPTS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Demasiados intentos, solicita un codigo nuevo")
+
+    if otp.code_hash != hash_otp_code(data.code):
+        otp.attempts += 1
+        db.commit()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Codigo invalido o expirado")
+
     user.hashed_password = hash_password(data.new_password)
-    record.used = True
+    otp.used = True
     db.commit()
+    log_event(db, "PASSWORD_RESET_DONE", user.id)
 
     return {"detail": "Contrasena actualizada correctamente"}
 

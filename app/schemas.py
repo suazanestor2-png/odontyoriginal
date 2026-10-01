@@ -5,6 +5,7 @@ from pydantic import ConfigDict
 from datetime import datetime
 
 
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -42,7 +43,7 @@ class RegisterIn(BaseModel):
     _pw = field_validator("password")(validate_password_strength)
 
 class LoginIn(BaseModel):
-    identifier: str = Field(min_length=3, max_length=255, description="Correo o numero de documento")
+    email: EmailStr
     password: str = Field(max_length=128)
 
 
@@ -63,7 +64,8 @@ class ForgotPasswordIn(BaseModel):
 
 
 class ResetPasswordIn(BaseModel):
-    token: str
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$")
     new_password: str
 
     _pw = field_validator("new_password")(validate_password_strength)
