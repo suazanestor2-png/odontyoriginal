@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import uuid
-import random
+
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -80,7 +80,7 @@ def verify_mfa_code(secret: str, code: str) -> bool:
     return pyotp.totp.TOTP(secret).verify(code, valid_window=1)
 
 def generate_otp_code() -> str:
-    return f"{random.randint(0, 999999):06d}"
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def hash_otp_code(code: str) -> str:

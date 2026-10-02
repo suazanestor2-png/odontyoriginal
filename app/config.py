@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     SECRET_KEY: str
-    DATABASE_URL: str = "postgresql+psycopg://suaza:1120Fai.@localhost:5432/odonty"
+    DATABASE_URL: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_MINUTES: int = 15
     REFRESH_TOKEN_DAYS: int = 7
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     SMTP_FROM: str = ""
     OTP_MINUTES: int = 10
     MAX_OTP_ATTEMPTS: int = 5
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080"
 
 
 

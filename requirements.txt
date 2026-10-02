@@ -7,4 +7,3 @@ pydantic-settings
 pyjwt
 bcrypt
 pyotp
-twilio
