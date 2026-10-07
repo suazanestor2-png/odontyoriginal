@@ -4,11 +4,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app import models  # noqa: F401
+from app.identity import models  # noqa: F401
 from app.core.config import get_cors_origins, settings
 from app.core.database import Base, engine
-from app.routers import auth, users
-from app.seed import seed_roles_and_permissions
+from app.identity import auth_router, users_router
+from app.identity.seed import seed_roles_and_permissions
 
 
 @asynccontextmanager
@@ -35,8 +35,8 @@ app.add_middleware(
 )
 
 
-app.include_router(auth.router)
-app.include_router(users.router)
+app.include_router(auth_router.router)
+app.include_router(users_router.router)
 
 
 @app.middleware("http")

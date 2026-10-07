@@ -4,11 +4,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import require_permission
-from app.models import Role, User
-from app.schemas import RoleChangeIn, UserOut
-from app.audit import log_event
-from app.models import AuditLog
-from app.schemas import AuditLogOut
+from app.identity.models import Role, User
+from app.identity.schemas import RoleChangeIn, UserOut
+from app.identity.audit import log_event
+from app.identity.models import AuditLog
+from app.identity.schemas import AuditLogOut
 
 router = APIRouter(prefix="/users", tags=["Usuarios y permisos"])
 

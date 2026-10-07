@@ -9,16 +9,16 @@ from datetime import datetime, timezone
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models import RefreshToken, Role, User
-from app.schemas import LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
+from app.identity.models import RefreshToken, Role, User
+from app.identity.schemas import LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
 from app.core.security import create_token, decode_token, hash_password, verify_password
-from app.schemas import MFACodeIn, MFALoginRequiredOut, MFASetupOut, MFAVerifyIn
+from app.identity.schemas import MFACodeIn, MFALoginRequiredOut, MFASetupOut, MFAVerifyIn
 from app.core.security import generate_mfa_secret, get_totp_uri, verify_mfa_code
-from app.audit import log_event
+from app.identity.audit import log_event
 from app.email_service import send_email
-from app.models import PasswordResetOtp
+from app.identity.models import PasswordResetOtp
 from app.core.security import generate_otp_code, hash_otp_code
-from app.schemas import ForgotPasswordIn, ResetPasswordIn
+from app.identity.schemas import ForgotPasswordIn, ResetPasswordIn
 
 
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
@@ -136,8 +136,6 @@ def refresh(data: RefreshIn, db: Session = Depends(get_db)):
     if not user or not user.is_active:
         raise INVALID
 
-    # Rotacion: el refresh usado se invalida, y se entrega uno nuevo.
-    # Si alguien intenta reusar este mismo refresh despues, fallara (stored.revoked ya sera True).
     stored.revoked = True
     db.commit()
 
