@@ -6,6 +6,7 @@ from datetime import datetime
 
 
 
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,13 +35,31 @@ def validate_password_strength(v: str) -> str:
     return v
 
 
+def validate_document(v: str) -> str:
+    if not re.fullmatch(r"[0-9]+", v):
+        raise ValueError("El documento solo debe contener numeros")
+    if not (5 <= len(v) <= 10):
+        raise ValueError("El documento debe tener entre 5 y 10 digitos")
+    return v
+
+
+def validate_phone(v: str) -> str:
+    if not re.fullmatch(r"[0-9]+", v):
+        raise ValueError("El telefono solo debe contener numeros")
+    if len(v) != 10:
+        raise ValueError("El telefono debe tener 10 digitos")
+    return v
+
+
 class RegisterIn(BaseModel):
     email: EmailStr
-    document_number: str = Field(pattern=r"^[0-9A-Za-z]{5,20}$")
+    document_number: str
     full_name: str = Field(min_length=3, max_length=150)
-    phone_number: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
+    phone_number: str
     password: str
 
+    _doc = field_validator("document_number")(validate_document)
+    _phone = field_validator("phone_number")(validate_phone)
     _pw = field_validator("password")(validate_password_strength)
 
 class LoginIn(BaseModel):
