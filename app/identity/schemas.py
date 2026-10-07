@@ -44,12 +44,11 @@ def validate_document(v: str) -> str:
 
 
 def validate_phone(v: str) -> str:
-    if not re.fullmatch(r"[0-9]+", v):
-        raise ValueError("El telefono solo debe contener numeros")
-    if len(v) != 10:
-        raise ValueError("El telefono debe tener 10 digitos")
-    return v
-
+    if v.startswith("+57"):
+        v = v[3:]
+    if not re.fullmatch(r"[0-9]{10}", v):
+        raise ValueError("El telefono debe tener 10 digitos numericos")
+    return "+57" + v
 
 class RegisterIn(BaseModel):
     email: EmailStr
