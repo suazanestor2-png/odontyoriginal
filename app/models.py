@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
-from app.database import Base
+from app.core.database import Base
 
 
 def utcnow() -> datetime:

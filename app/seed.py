@@ -1,4 +1,4 @@
-from app.database import SessionLocal
+from app.core.database import SessionLocal
 from app.models import Permission, Role
 
 ROLE_NAMES = ["super_admin", "admin", "odontologo", "recepcionista", "usuario"]

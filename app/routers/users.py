@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.deps import require_permission
+from app.core.database import get_db
+from app.core.deps import require_permission
 from app.models import Role, User
 from app.schemas import RoleChangeIn, UserOut
 from app.audit import log_event

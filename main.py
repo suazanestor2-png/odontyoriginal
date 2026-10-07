@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import models  # noqa: F401
-from app.config import get_cors_origins, settings
-from app.database import Base, engine
+from app.core.config import get_cors_origins, settings
+from app.core.database import Base, engine
 from app.routers import auth, users
 from app.seed import seed_roles_and_permissions
 

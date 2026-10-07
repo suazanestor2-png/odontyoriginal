@@ -9,7 +9,7 @@ import bcrypt
 import jwt
 from fastapi import HTTPException, status
 
-from app.config import settings
+from app.core.config import settings
 
 import pyotp
 

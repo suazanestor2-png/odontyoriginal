@@ -6,18 +6,18 @@ from sqlalchemy.orm import Session
 
 from datetime import datetime, timezone
 
-from app.config import settings
-from app.database import get_db
-from app.deps import get_current_user
+from app.core.config import settings
+from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.models import RefreshToken, Role, User
 from app.schemas import LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
-from app.security import create_token, decode_token, hash_password, verify_password
+from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.schemas import MFACodeIn, MFALoginRequiredOut, MFASetupOut, MFAVerifyIn
-from app.security import generate_mfa_secret, get_totp_uri, verify_mfa_code
+from app.core.security import generate_mfa_secret, get_totp_uri, verify_mfa_code
 from app.audit import log_event
 from app.email_service import send_email
 from app.models import PasswordResetOtp
-from app.security import generate_otp_code, hash_otp_code
+from app.core.security import generate_otp_code, hash_otp_code
 from app.schemas import ForgotPasswordIn, ResetPasswordIn
 
 
