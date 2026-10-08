@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status   # NUEVO: BackgroundTasks
+from sqlalchemy import or_, select                                                # NUEVO: or_
+from sqlalchemy.exc import IntegrityError                                         # NUEVO
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import require_permission
-from app.identity.models import Role, User
-from app.identity.schemas import RoleChangeIn, UserOut
+from app.core.security import generate_temp_password, hash_password              # NUEVO
+from app.email_service import send_welcome_email                                  # NUEVO
 from app.identity.audit import log_event
-from app.identity.models import AuditLog
-from app.identity.schemas import AuditLogOut
+from app.identity.models import AuditLog, Role, User
+from app.identity.schemas import AuditLogOut, RoleChangeIn, UserCreateIn, UserOut  # NUEVO: UserCreateIn
 
 router = APIRouter(prefix="/users", tags=["Usuarios y permisos"])
 
@@ -24,6 +25,8 @@ def to_user_out(user: User) -> UserOut:
         full_name=user.full_name,
         role_name=user.role.name,
         is_active=user.is_active,
+        phone_number=user.phone_number,                      # NUEVO
+        must_change_password=user.must_change_password,      # NUEVO
     )
 
 
@@ -41,6 +44,58 @@ def list_users(
 ):
     users = db.scalars(select(User).order_by(User.id)).all()
     return [to_user_out(u) for u in users]
+
+
+# NUEVO: crear trabajadores (el admin no escribe contraseña, se genera una temporal)
+@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def create_user(
+    data: UserCreateIn,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("users.create")),
+):
+    # Un admin normal solo puede crear estos 3 roles (igual que en change_role)
+    if actor.role.name != "super_admin" and data.role not in ADMIN_ALLOWED_ROLES:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Un admin solo puede crear odontologo, recepcionista o usuario",
+        )
+
+    exists = db.scalar(
+        select(User).where(
+            or_(User.email == data.email, User.document_number == data.document_number)
+        )
+    )
+    if exists:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe un usuario con ese correo o documento")
+
+    role = db.scalar(select(Role).where(Role.name == data.role))
+    if not role:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Rol invalido")
+
+    temp_password = generate_temp_password()
+
+    user = User(
+        email=data.email,
+        document_number=data.document_number,
+        full_name=data.full_name,
+        phone_number=data.phone_number,
+        role_id=role.id,
+        hashed_password=hash_password(temp_password),
+        is_active=True,
+        must_change_password=True,
+    )
+    db.add(user)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe un usuario con ese correo o documento")
+    db.refresh(user)
+
+    background.add_task(send_welcome_email, user.email, user.full_name, temp_password)
+    log_event(db, "USER_CREATED", actor.id, f"target={user.id} rol={data.role}")
+    return to_user_out(user)
 
 
 @router.patch("/{user_id}/role", response_model=UserOut)
@@ -77,6 +132,7 @@ def change_role(
     db.refresh(target)
     log_event(db, "ROLE_CHANGED", actor.id, f"target={target.id} nuevo_rol={data.role}")
     return to_user_out(target)
+
 
 @router.get("/audit-log", response_model=list[AuditLogOut])
 def get_audit_log(

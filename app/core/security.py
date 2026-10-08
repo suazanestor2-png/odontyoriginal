@@ -2,6 +2,7 @@ import base64
 import hashlib
 import uuid
 import secrets
+import string
 
 from datetime import datetime, timedelta, timezone
 
@@ -86,3 +87,12 @@ def generate_otp_code() -> str:
 
 def hash_otp_code(code: str) -> str:
     return hashlib.sha256(code.encode()).hexdigest()
+
+def generate_temp_password(length: int = 12) -> str:
+    symbols = "!@#$%&*?"
+    alphabet = string.ascii_letters + string.digits + symbols
+    while True:
+        pwd = "".join(secrets.choice(alphabet) for _ in range(length))
+        if (any(c.islower() for c in pwd) and any(c.isupper() for c in pwd)
+                and any(c.isdigit() for c in pwd) and any(c in symbols for c in pwd)):
+            return pwd

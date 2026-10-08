@@ -5,8 +5,6 @@ from pydantic import ConfigDict
 from datetime import datetime
 
 
-
-
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -16,6 +14,8 @@ class UserOut(BaseModel):
     full_name: str
     role_name: str
     is_active: bool
+    phone_number: str | None = None            # NUEVO
+    must_change_password: bool = False         # NUEVO
 
 
 def validate_password_strength(v: str) -> str:
@@ -50,6 +50,7 @@ def validate_phone(v: str) -> str:
         raise ValueError("El telefono debe tener 10 digitos numericos")
     return "+57" + v
 
+
 class RegisterIn(BaseModel):
     email: EmailStr
     document_number: str
@@ -61,6 +62,18 @@ class RegisterIn(BaseModel):
     _phone = field_validator("phone_number")(validate_phone)
     _pw = field_validator("password")(validate_password_strength)
 
+
+class UserCreateIn(BaseModel):                 # NUEVO
+    email: EmailStr
+    document_number: str
+    full_name: str = Field(min_length=3, max_length=150)
+    phone_number: str
+    role: str = Field(pattern=r"^(admin|odontologo|recepcionista|usuario)$")
+
+    _doc = field_validator("document_number")(validate_document)
+    _phone = field_validator("phone_number")(validate_phone)
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(max_length=128)
@@ -70,13 +83,23 @@ class TokenOut(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    must_change_password: bool = False         # NUEVO
+
+
+class ChangePasswordIn(BaseModel):             # NUEVO
+    current_password: str = Field(max_length=128)
+    new_password: str
+
+    _pw = field_validator("new_password")(validate_password_strength)
 
 
 class RoleChangeIn(BaseModel):
     role: str = Field(pattern=r"^(admin|odontologo|recepcionista|usuario)$")
 
+
 class RefreshIn(BaseModel):
     refresh_token: str
+
 
 class ForgotPasswordIn(BaseModel):
     email: EmailStr
@@ -107,6 +130,7 @@ class MFALoginRequiredOut(BaseModel):
 class MFAVerifyIn(BaseModel):
     mfa_token: str
     code: str = Field(pattern=r"^\d{6}$")
+
 
 class AuditLogOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

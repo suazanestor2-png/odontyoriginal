@@ -81,6 +81,7 @@ class User(Base, AuditMixin):
     failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
 class RefreshToken(Base, AuditMixin):
     __tablename__ = "refresh_tokens"
@@ -110,3 +111,5 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(60), index=True)
     detail: Mapped[str | None] = mapped_column(String(300), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
