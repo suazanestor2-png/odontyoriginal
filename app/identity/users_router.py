@@ -61,9 +61,11 @@ def create_user(
             "Un admin solo puede crear odontologo, recepcionista o usuario",
         )
 
+    email = data.email.lower()   # CAMBIO: el login busca en minusculas, asi que se guarda en minusculas
+
     exists = db.scalar(
         select(User).where(
-            or_(User.email == data.email, User.document_number == data.document_number)
+            or_(User.email == email, User.document_number == data.document_number)   # CAMBIO: usa email
         )
     )
     if exists:
@@ -76,7 +78,7 @@ def create_user(
     temp_password = generate_temp_password()
 
     user = User(
-        email=data.email,
+        email=email,   # CAMBIO: antes data.email
         document_number=data.document_number,
         full_name=data.full_name,
         phone_number=data.phone_number,
