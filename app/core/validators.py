@@ -32,6 +32,15 @@ def _password(valor: str) -> str:
         raise ValueError("La contraseña debe incluir al menos un símbolo")
     return valor
 
+def calcular_dv_nit(nit: str) -> str:
+    """Calcula el digito de verificacion de un NIT colombiano (algoritmo modulo 11)."""
+    pesos = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71]
+    nit_invertido = nit[::-1]
+    total = sum(int(d) * pesos[i] for i, d in enumerate(nit_invertido))
+    residuo = total % 11
+    if residuo in (0, 1):
+        return str(residuo)
+    return str(11 - residuo)
 
 Documento = Annotated[str, AfterValidator(_documento)]
 Telefono = Annotated[str, AfterValidator(_telefono)]

@@ -42,9 +42,11 @@ def list_users(
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("users.view")),
 ):
-    users = db.scalars(select(User).order_by(User.id)).all()
+    query = select(User).order_by(User.id)
+    if actor.role.name != "super_admin":
+        query = query.where(User.clinic_id == actor.clinic_id)
+    users = db.scalars(query).all()
     return [to_user_out(u) for u in users]
-
 
 # NUEVO: crear trabajadores (el admin no escribe contraseña, se genera una temporal)
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -78,7 +80,7 @@ def create_user(
     temp_password = generate_temp_password()
 
     user = User(
-        email=email,   # CAMBIO: antes data.email
+        email=email,
         document_number=data.document_number,
         full_name=data.full_name,
         phone_number=data.phone_number,
@@ -86,7 +88,9 @@ def create_user(
         hashed_password=hash_password(temp_password),
         is_active=True,
         must_change_password=True,
+        clinic_id=actor.clinic_id,
     )
+
     db.add(user)
     try:
         db.commit()
@@ -116,6 +120,8 @@ def change_role(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "El super admin no se puede modificar")
 
     if actor.role.name != "super_admin":
+        if target.clinic_id != actor.clinic_id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Usuario no encontrado")
         # Un admin normal solo puede tocar y asignar estos 3 roles
         if target.role.name not in ADMIN_ALLOWED_ROLES:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Un admin no puede modificar a otro admin")

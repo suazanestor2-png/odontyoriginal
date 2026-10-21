@@ -9,6 +9,8 @@ from app.core.config import get_cors_origins, settings
 from app.core.database import Base, engine
 from app.identity import auth_router, users_router
 from app.identity.seed import seed_roles_and_permissions
+from app.identity import models  # noqa: F401
+from app.clinics import models as clinic_models  # noqa: F401
 
 
 @asynccontextmanager

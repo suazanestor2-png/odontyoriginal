@@ -2,35 +2,12 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
-
+from app.core.mixins import AuditMixin, utcnow
 from app.core.database import Base
 
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
-
-
-class AuditMixin:
-    """Columnas de auditoria comunes a (casi) todas las tablas."""
-
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
-
-    # use_alter=True: evita un error de "dependencia circular" al crear las tablas,
-    # porque User depende de Role (role_id) y Role depende de User (created_by).
-    @declared_attr
-    def created_by(cls) -> Mapped[int | None]:
-        return mapped_column(
-            ForeignKey("users.id", use_alter=True, name=f"fk_{cls.__tablename__}_created_by"),
-            nullable=True,
-        )
-
-    @declared_attr
-    def updated_by(cls) -> Mapped[int | None]:
-        return mapped_column(
-            ForeignKey("users.id", use_alter=True, name=f"fk_{cls.__tablename__}_updated_by"),
-            nullable=True,
-        )
 
 
 # Tabla puente para la relacion muchos-a-muchos Role <-> Permission
@@ -82,6 +59,8 @@ class User(Base, AuditMixin):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    clinic_id: Mapped[int | None] = mapped_column(ForeignKey("clinics.id"), nullable=True, index=True)
+    clinic: Mapped["Clinic | None"] = relationship(foreign_keys=[clinic_id])
 
 class RefreshToken(Base, AuditMixin):
     __tablename__ = "refresh_tokens"
