@@ -20,6 +20,7 @@ from app.email_service import send_email
 from app.identity.models import PasswordResetOtp
 from app.core.security import generate_otp_code, hash_otp_code
 from app.identity.schemas import ForgotPasswordIn, ResetPasswordIn
+from app.clinics.models import Clinic
 
 
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
@@ -113,6 +114,16 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
 
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Cuenta desactivada")
+
+    # super_admin no pertenece a ninguna clinica, se salta esta validacion
+    if user.clinic_id is not None and user.role.name != "super_admin":
+        clinic = db.get(Clinic, user.clinic_id)
+        if not clinic or clinic.status != "active":
+            log_event(db, "LOGIN_CLINIC_NOT_ACTIVE", user.id, f"clinic={user.clinic_id} status={clinic.status if clinic else 'N/A'}")
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Tu clinica aun no ha sido aprobada. Te notificaremos por correo cuando este activa.",
+            )
 
     user.failed_attempts = 0
     db.commit()
@@ -285,6 +296,7 @@ def mfa_enable(data: MFACodeIn, user: User = Depends(get_active_user), db: Sessi
     return {"detail": "MFA activado correctamente"}
 
 
+
 @router.post("/mfa/disable")
 def mfa_disable(data: MFACodeIn, user: User = Depends(get_active_user), db: Session = Depends(get_db)):
     if not user.mfa_enabled or not verify_mfa_code(user.mfa_secret, data.code):
@@ -313,3 +325,4 @@ def change_password(
     revoke_all_refresh_tokens(db, user.id)
     db.commit()
     log_event(db, "PASSWORD_CHANGED", user.id)
+

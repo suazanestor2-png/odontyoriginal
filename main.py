@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-
+from app.clinics import router as clinics_router
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -56,3 +56,5 @@ async def handle_unexpected_error(request: Request, exc: Exception):
 @app.get("/")
 def health():
     return {"status": "ok"}
+
+app.include_router(clinics_router.router)

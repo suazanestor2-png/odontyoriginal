@@ -15,3 +15,5 @@ class Clinic(Base, AuditMixin):
     # pending_email | pending_review | active | rejected | suspended
     status: Mapped[str] = mapped_column(String(20), default="pending_email", index=True)
     timezone: Mapped[str] = mapped_column(String(50), default="America/Bogota")
+    cedula_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    rut_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

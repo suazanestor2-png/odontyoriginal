@@ -12,7 +12,6 @@ cloudinary.config(
 
 
 def upload_document(file_bytes: bytes, public_id: str) -> str:
-    """Sube un archivo y devuelve la URL segura donde quedo guardado."""
     result = cloudinary.uploader.upload(
         file_bytes,
         public_id=public_id,

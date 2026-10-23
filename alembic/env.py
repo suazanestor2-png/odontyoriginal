@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import settings
 from app.core.database import Base
 from app.identity import models  # noqa: F401  (registra las tablas en Base.metadata)
+from app.clinics import models as clinic_models  # noqa: F401  (registra Clinic en Base.metadata)
 
 config = context.config
 # La URL sale de la configuración (.env), no de alembic.ini, para no guardar claves en archivos

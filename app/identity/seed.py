@@ -6,15 +6,16 @@ ROLE_NAMES = ["super_admin", "admin", "odontologo", "recepcionista", "usuario"]
 # Iremos agregando codigos aqui a medida que construyamos cada endpoint protegido.
 PERMISSION_CODES = {
     "users.view": "Ver la lista de usuarios",
-    "users.create": "Crear usuarios del personal",   # NUEVO
+    "users.create": "Crear usuarios del personal",
     "users.manage_role": "Cambiar el rol de un usuario",
     "users.manage_active": "Activar o desactivar un usuario",
     "audit.view": "Consultar el historial de auditoria",
+    "clinics.review": "Aprobar o rechazar el registro de una clinica",   # NUEVO
 }
 
 ROLE_PERMISSIONS = {
     "super_admin": list(PERMISSION_CODES.keys()),
-    "admin": ["users.view", "users.create", "users.manage_role", "users.manage_active"],   # NUEVO: users.create
+    "admin": ["users.view", "users.create", "users.manage_role", "users.manage_active"],
     "odontologo": [],
     "recepcionista": [],
     "usuario": [],
