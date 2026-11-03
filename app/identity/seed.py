@@ -3,21 +3,26 @@ from app.identity.models import Permission, Role
 
 ROLE_NAMES = ["super_admin", "admin", "odontologo", "recepcionista", "usuario"]
 
-# Iremos agregando codigos aqui a medida que construyamos cada endpoint protegido.
+# Iremos agregando permisos aqui a medida que construyamos cada endpoint.
 PERMISSION_CODES = {
     "users.view": "Ver la lista de usuarios",
     "users.create": "Crear usuarios del personal",
+    "users.edit": "Editar los datos de un usuario",
     "users.manage_role": "Cambiar el rol de un usuario",
     "users.manage_active": "Activar o desactivar un usuario",
     "audit.view": "Consultar el historial de auditoria",
-    "clinics.review": "Aprobar o rechazar el registro de una clinica",   # NUEVO
+    "clinics.review": "Aprobar o rechazar el registro de una clinica",
+    "patients.view": "Ver la lista y el detalle de pacientes",
+    "patients.create": "Registrar un paciente nuevo",
+    "patients.edit": "Editar el perfil de un paciente",
 }
 
 ROLE_PERMISSIONS = {
     "super_admin": list(PERMISSION_CODES.keys()),
-    "admin": ["users.view", "users.create", "users.manage_role", "users.manage_active"],
-    "odontologo": [],
-    "recepcionista": [],
+    "admin": ["users.view", "users.create", "users.edit", "users.manage_role", "users.manage_active",
+              "patients.view", "patients.create", "patients.edit"],
+    "odontologo": ["patients.view"],
+    "recepcionista": ["patients.view", "patients.create", "patients.edit"],
     "usuario": [],
 }
 

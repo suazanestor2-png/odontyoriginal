@@ -140,3 +140,12 @@ class AuditLogOut(BaseModel):
     action: str
     detail: str | None
     created_at: datetime
+
+
+class ActiveChangeIn(BaseModel):
+    is_active: bool
+
+class UserUpdateIn(BaseModel):
+    full_name: str | None = Field(default=None, min_length=3, max_length=150)
+    phone_number: str | None = None
+    email: EmailStr | None = None

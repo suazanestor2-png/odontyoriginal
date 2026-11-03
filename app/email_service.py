@@ -98,3 +98,80 @@ def send_welcome_email(to_email: str, full_name: str, temp_password: str) -> Non
 </html>
 """
     send_email(to=to_email, subject="Tu cuenta en Odonty", body=text_body, html_body=html_body)
+
+def send_clinic_pending_notification(
+    to_emails: list[str], clinic_name: str, nit: str, cedula_url: str, rut_url: str
+) -> None:
+    text_body = (
+        f"Nueva clinica registrada: {clinic_name} (NIT {nit}).\n"
+        "Esta pendiente de revision. Ingresa al panel de administracion para aprobarla o rechazarla.\n\n"
+        f"Cedula: {cedula_url}\n"
+        f"RUT: {rut_url}"
+    )
+    html_body = f"""\
+<html>
+  <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 24px;">
+    <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px;">
+      <h2 style="color: #1a1a2e; margin-top: 0;">Nueva clinica pendiente</h2>
+      <p style="color: #333; font-size: 15px;">
+        <strong>{clinic_name}</strong> (NIT {nit}) se acaba de registrar y espera revision.
+      </p>
+      <p style="color: #666; font-size: 13px; margin-bottom: 24px;">
+        Ingresa al panel de administracion para aprobarla o rechazarla.
+      </p>
+      <p style="color: #333; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Cedula:</p>
+      <img src="{cedula_url}" alt="Cedula" style="max-width: 100%; border-radius: 6px; margin-bottom: 20px; border: 1px solid #e5e5e5;">
+      <p style="color: #333; font-size: 14px; font-weight: bold; margin-bottom: 8px;">RUT:</p>
+      <img src="{rut_url}" alt="RUT" style="max-width: 100%; border-radius: 6px; border: 1px solid #e5e5e5;">
+    </div>
+  </body>
+</html>
+"""
+    for email in to_emails:
+        send_email(to=email, subject="Odonty: nueva clinica pendiente de revision", body=text_body, html_body=html_body)
+
+def send_clinic_registration_received(to_email: str, full_name: str, clinic_name: str) -> None:
+    text_body = (
+        f"Hola {full_name},\n\n"
+        f"Tu registro para {clinic_name} fue recibido correctamente.\n"
+        "Nuestro equipo va a revisar tus documentos. Te avisaremos por correo en cuanto se apruebe o rechace."
+    )
+    html_body = f"""\
+<html>
+  <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 24px;">
+    <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px;">
+      <h2 style="color: #1a1a2e; margin-top: 0;">Registro recibido</h2>
+      <p style="color: #333; font-size: 15px;">Hola <strong>{full_name}</strong>,</p>
+      <p style="color: #333; font-size: 15px;">
+        Tu registro para <strong>{clinic_name}</strong> fue recibido correctamente.
+      </p>
+      <p style="color: #666; font-size: 13px;">
+        Nuestro equipo va a revisar tus documentos. Te avisaremos por correo en cuanto se apruebe o rechace tu clinica.
+      </p>
+    </div>
+  </body>
+</html>
+"""
+    send_email(to=to_email, subject="Odonty: tu registro esta en revision", body=text_body, html_body=html_body)
+
+def send_clinic_review_result(to_email: str, clinic_name: str, approved: bool) -> None:
+    if approved:
+        subject = "Tu clinica fue aprobada - Odonty"
+        text_body = f"Buenas noticias: {clinic_name} fue aprobada. Ya puedes iniciar sesion."
+        mensaje_html = f"Tu clinica <strong>{clinic_name}</strong> fue aprobada. Ya puedes iniciar sesion."
+    else:
+        subject = "Tu clinica no fue aprobada - Odonty"
+        text_body = f"{clinic_name} no fue aprobada en este momento. Contacta a soporte si tienes preguntas."
+        mensaje_html = f"Tu clinica <strong>{clinic_name}</strong> no fue aprobada en este momento. Contacta a soporte si tienes preguntas."
+
+    html_body = f"""\
+<html>
+  <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 24px;">
+    <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px;">
+      <h2 style="color: #1a1a2e; margin-top: 0;">Resultado de tu registro</h2>
+      <p style="color: #333; font-size: 15px;">{mensaje_html}</p>
+    </div>
+  </body>
+</html>
+"""
+    send_email(to=to_email, subject=subject, body=text_body, html_body=html_body)

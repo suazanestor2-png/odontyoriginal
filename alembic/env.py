@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.database import Base
 from app.identity import models  # noqa: F401  (registra las tablas en Base.metadata)
 from app.clinics import models as clinic_models  # noqa: F401  (registra Clinic en Base.metadata)
+from app.patients import models as patient_models  # noqa: F401
 
 config = context.config
 # La URL sale de la configuración (.env), no de alembic.ini, para no guardar claves en archivos
@@ -46,3 +47,4 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+

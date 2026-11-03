@@ -3,15 +3,19 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.clinics.models import Clinic
+from app.clinics.schemas import ClinicOut, ClinicReviewIn
 from app.core.cloudinary_service import upload_document
 from app.core.database import get_db
+from app.core.deps import require_permission
 from app.core.security import hash_password
 from app.core.validators import _documento, _password, _telefono, calcular_dv_nit
 from app.identity.audit import log_event
 from app.identity.models import Role, User
-from app.core.deps import require_permission
-
-from app.clinics.schemas import ClinicOut, ClinicReviewIn
+from app.email_service import (
+    send_clinic_pending_notification,
+    send_clinic_registration_received,
+    send_clinic_review_result,
+)
 
 router = APIRouter(prefix="/clinics", tags=["Clinicas"])
 
@@ -129,6 +133,14 @@ def register_clinic(
 
     log_event(db, "CLINIC_REGISTERED", admin_user.id, f"clinic={clinic.id} nit={nit}")
 
+    super_admins = db.scalars(
+        select(User.email).join(Role, User.role_id == Role.id).where(Role.name == "super_admin")
+    ).all()
+    if super_admins:
+        send_clinic_pending_notification(list(super_admins), clinic.name, clinic.nit, clinic.cedula_url, clinic.rut_url)
+
+    send_clinic_registration_received(admin_user.email, admin_user.full_name, clinic.name)
+
     return {
         "detail": "Registro recibido. Tu clinica sera revisada antes de activarse.",
         "clinic_id": clinic.id,
@@ -161,6 +173,15 @@ def review_clinic(
     clinic.status = "active" if data.approve else "rejected"
     db.commit()
     db.refresh(clinic)
+
+    admin_de_la_clinica = db.scalar(
+        select(User).where(
+            User.clinic_id == clinic.id,
+            User.role_id == db.scalar(select(Role.id).where(Role.name == "admin")),
+        )
+    )
+    if admin_de_la_clinica:
+        send_clinic_review_result(admin_de_la_clinica.email, clinic.name, data.approve)
 
     log_event(db, "CLINIC_REVIEWED", actor.id, f"clinic={clinic.id} aprobada={data.approve}")
     return clinic

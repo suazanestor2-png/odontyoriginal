@@ -11,6 +11,11 @@ from app.identity import auth_router, users_router
 from app.identity.seed import seed_roles_and_permissions
 from app.identity import models  # noqa: F401
 from app.clinics import models as clinic_models  # noqa: F401
+# main.py
+from app.patients import models as patient_models  # noqa: F401
+from app.patients import router as patients_router
+
+
 
 
 @asynccontextmanager
@@ -58,3 +63,4 @@ def health():
     return {"status": "ok"}
 
 app.include_router(clinics_router.router)
+app.include_router(patients_router.router)

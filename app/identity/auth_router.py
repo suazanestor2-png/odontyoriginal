@@ -21,6 +21,7 @@ from app.identity.models import PasswordResetOtp
 from app.core.security import generate_otp_code, hash_otp_code
 from app.identity.schemas import ForgotPasswordIn, ResetPasswordIn
 from app.clinics.models import Clinic
+from app.identity.tokens import revoke_all_refresh_tokens #Funcion para reutilizar
 
 
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
@@ -53,12 +54,6 @@ def issue_tokens(db: Session, user: User) -> TokenOut:
     )
 
 
-def revoke_all_refresh_tokens(db: Session, user_id: int) -> None:   # NUEVO
-    db.execute(
-        update(RefreshToken)
-        .where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
-        .values(revoked=True)
-    )
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -261,10 +256,13 @@ def reset_password(data: ResetPasswordIn, db: Session = Depends(get_db)):
         db.commit()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Codigo invalido o expirado")
 
+    if verify_password(data.new_password, user.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La nueva contrasena debe ser distinta a la anterior")
+
     user.hashed_password = hash_password(data.new_password)
-    user.must_change_password = False                        # NUEVO
+    user.must_change_password = False
     otp.used = True
-    revoke_all_refresh_tokens(db, user.id)                   # NUEVO
+    revoke_all_refresh_tokens(db, user.id)
     db.commit()
     log_event(db, "PASSWORD_RESET_DONE", user.id)
 
