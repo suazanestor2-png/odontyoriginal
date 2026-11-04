@@ -14,7 +14,8 @@ from app.clinics import models as clinic_models  # noqa: F401
 # main.py
 from app.patients import models as patient_models  # noqa: F401
 from app.patients import router as patients_router
-
+from app.appointments import models as appointment_models  # noqa: F401
+from app.appointments import router as appointments_router
 
 
 
@@ -44,6 +45,9 @@ app.add_middleware(
 
 app.include_router(auth_router.router)
 app.include_router(users_router.router)
+app.include_router(clinics_router.router)
+app.include_router(patients_router.router)
+app.include_router(appointments_router.router)
 
 
 @app.middleware("http")
@@ -62,5 +66,3 @@ async def handle_unexpected_error(request: Request, exc: Exception):
 def health():
     return {"status": "ok"}
 
-app.include_router(clinics_router.router)
-app.include_router(patients_router.router)

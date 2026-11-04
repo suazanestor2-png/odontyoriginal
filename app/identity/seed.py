@@ -15,15 +15,19 @@ PERMISSION_CODES = {
     "patients.view": "Ver la lista y el detalle de pacientes",
     "patients.create": "Registrar un paciente nuevo",
     "patients.edit": "Editar el perfil de un paciente",
+    "appointments.view": "Ver las citas",
+    "appointments.create": "Crear una cita",
+    "appointments.edit": "Reprogramar, cancelar o actualizar el estado de una cita",
 }
 
 ROLE_PERMISSIONS = {
     "super_admin": list(PERMISSION_CODES.keys()),
-    "admin": ["users.view", "users.create", "users.edit", "users.manage_role", "users.manage_active",
+    "admin": ["users.view", "users.create", "users.edit", "users.manage_role", "users.manage_active", "appointments.view", "appointments.create", "appointments.edit",
               "patients.view", "patients.create", "patients.edit"],
-    "odontologo": ["patients.view"],
-    "recepcionista": ["patients.view", "patients.create", "patients.edit"],
+    "odontologo": ["patients.view", "appointments.view", "appointments.edit"],
+    "recepcionista": ["patients.view", "patients.create", "patients.edit", "appointments.view", "appointments.create", "appointments.edit"],
     "usuario": [],
+
 }
 
 
