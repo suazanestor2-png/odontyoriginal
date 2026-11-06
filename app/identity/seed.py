@@ -18,16 +18,28 @@ PERMISSION_CODES = {
     "appointments.view": "Ver las citas",
     "appointments.create": "Crear una cita",
     "appointments.edit": "Reprogramar, cancelar o actualizar el estado de una cita",
+    "clinical_history.view": "Ver la historia clinica y las consultas de un paciente",
+    "clinical_history.create": "Registrar una consulta en la historia clinica",
 }
 
 ROLE_PERMISSIONS = {
     "super_admin": list(PERMISSION_CODES.keys()),
-    "admin": ["users.view", "users.create", "users.edit", "users.manage_role", "users.manage_active", "appointments.view", "appointments.create", "appointments.edit",
-              "patients.view", "patients.create", "patients.edit"],
-    "odontologo": ["patients.view", "appointments.view", "appointments.edit"],
-    "recepcionista": ["patients.view", "patients.create", "patients.edit", "appointments.view", "appointments.create", "appointments.edit"],
+    "admin": [
+        "users.view", "users.create", "users.edit", "users.manage_role", "users.manage_active",
+        "patients.view", "patients.create", "patients.edit",
+        "appointments.view", "appointments.create", "appointments.edit",
+        "clinical_history.view", "clinical_history.create",
+    ],
+    "odontologo": [
+        "patients.view",
+        "appointments.view", "appointments.edit",
+        "clinical_history.view", "clinical_history.create",
+    ],
+    "recepcionista": [
+        "patients.view", "patients.create", "patients.edit",
+        "appointments.view", "appointments.create", "appointments.edit",
+    ],
     "usuario": [],
-
 }
 
 

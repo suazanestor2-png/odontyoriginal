@@ -10,6 +10,8 @@ from app.clinics import models as clinic_models  # noqa: F401  (registra Clinic 
 from app.patients import models as patient_models  # noqa: F401
 from app.appointments import models as appointment_models  # noqa: F401
 
+from app.clinical_history import models as clinical_history_models  # noqa: F401
+
 config = context.config
 # La URL sale de la configuración (.env), no de alembic.ini, para no guardar claves en archivos
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))

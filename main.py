@@ -17,6 +17,8 @@ from app.patients import router as patients_router
 from app.appointments import models as appointment_models  # noqa: F401
 from app.appointments import router as appointments_router
 
+from app.clinical_history import models as clinical_history_models  # noqa: F401
+from app.clinical_history import router as clinical_history_router
 
 
 @asynccontextmanager
@@ -48,6 +50,7 @@ app.include_router(users_router.router)
 app.include_router(clinics_router.router)
 app.include_router(patients_router.router)
 app.include_router(appointments_router.router)
+app.include_router(clinical_history_router.router)
 
 
 @app.middleware("http")
