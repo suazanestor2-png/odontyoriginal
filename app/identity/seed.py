@@ -20,6 +20,8 @@ PERMISSION_CODES = {
     "appointments.edit": "Reprogramar, cancelar o actualizar el estado de una cita",
     "clinical_history.view": "Ver la historia clinica y las consultas de un paciente",
     "clinical_history.create": "Registrar una consulta en la historia clinica",
+    "odontogram.view": "Ver el odontograma de un paciente",
+    "odontogram.create": "Registrar un hallazgo o tratamiento en el odontograma",
 }
 
 ROLE_PERMISSIONS = {
@@ -29,11 +31,13 @@ ROLE_PERMISSIONS = {
         "patients.view", "patients.create", "patients.edit",
         "appointments.view", "appointments.create", "appointments.edit",
         "clinical_history.view", "clinical_history.create",
+        "odontogram.view", "odontogram.create",
     ],
     "odontologo": [
         "patients.view",
         "appointments.view", "appointments.edit",
         "clinical_history.view", "clinical_history.create",
+        "odontogram.view", "odontogram.create",
     ],
     "recepcionista": [
         "patients.view", "patients.create", "patients.edit",

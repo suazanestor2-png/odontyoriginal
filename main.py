@@ -20,11 +20,16 @@ from app.appointments import router as appointments_router
 from app.clinical_history import models as clinical_history_models  # noqa: F401
 from app.clinical_history import router as clinical_history_router
 
+from app.odontogram import models as odontogram_models  # noqa: F401
+from app.odontogram.seed import seed_dental_catalogs
+from app.odontogram import router as odontogram_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
     seed_roles_and_permissions()
+    seed_dental_catalogs()
     yield
 
 
@@ -51,6 +56,7 @@ app.include_router(clinics_router.router)
 app.include_router(patients_router.router)
 app.include_router(appointments_router.router)
 app.include_router(clinical_history_router.router)
+app.include_router(odontogram_router.router)
 
 
 @app.middleware("http")
