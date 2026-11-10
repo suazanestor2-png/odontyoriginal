@@ -28,6 +28,8 @@ from app.notifications import router as notifications_router
 from app.identity.seed import seed_roles_and_permissions
 from app.odontogram.seed import seed_dental_catalogs
 
+import time
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -78,3 +80,16 @@ async def handle_unexpected_error(request: Request, exc: Exception):
 @app.get("/")
 def health():
     return {"status": "ok"}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    t0 = time.time()
+    print("[startup] seed_roles_and_permissions: inicio", flush=True)
+    seed_roles_and_permissions()
+    print(f"[startup] seed_roles_and_permissions: ok ({time.time() - t0:.1f}s)", flush=True)
+
+    t1 = time.time()
+    print("[startup] seed_dental_catalogs: inicio", flush=True)
+    seed_dental_catalogs()
+    print(f"[startup] seed_dental_catalogs: ok ({time.time() - t1:.1f}s)", flush=True)
+    yield
