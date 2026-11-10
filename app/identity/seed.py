@@ -22,6 +22,7 @@ PERMISSION_CODES = {
     "clinical_history.create": "Registrar una consulta en la historia clinica",
     "odontogram.view": "Ver el odontograma de un paciente",
     "odontogram.create": "Registrar un hallazgo o tratamiento en el odontograma",
+    "notifications.create": "Crear una notificacion manual para un paciente o miembro del personal",
 }
 
 ROLE_PERMISSIONS = {
@@ -32,6 +33,7 @@ ROLE_PERMISSIONS = {
         "appointments.view", "appointments.create", "appointments.edit",
         "clinical_history.view", "clinical_history.create",
         "odontogram.view", "odontogram.create",
+        "notifications.create",
     ],
     "odontologo": [
         "patients.view",
@@ -42,6 +44,7 @@ ROLE_PERMISSIONS = {
     "recepcionista": [
         "patients.view", "patients.create", "patients.edit",
         "appointments.view", "appointments.create", "appointments.edit",
+        "notifications.create",
     ],
     "usuario": [],
 }
