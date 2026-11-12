@@ -58,25 +58,25 @@ def register_patient(
     existing_user = db.scalar(select(User).where(or_(User.email == email, User.document_number == document_number)))
 
     if existing_user:
-        ya_tiene_perfil = db.scalar(select(Patient).where(Patient.user_id == existing_user.id))
-        if ya_tiene_perfil:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Este usuario ya tiene un perfil de paciente (id={ya_tiene_perfil.id}); "
-                f"usa PATCH /patients/{ya_tiene_perfil.id} para editarlo",
-            )
         if existing_user.role.name != "usuario":
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
                 "Ese correo o documento pertenece a una cuenta de personal, no se puede registrar como paciente",
             )
-        if existing_user.clinic_id and existing_user.clinic_id != actor.clinic_id:
-            raise HTTPException(status.HTTP_409_CONFLICT, "Ese usuario pertenece a otra clinica")
 
-        # El usuario ya existe (se registro solo, por ejemplo): solo completamos su perfil clinico.
-        if not existing_user.clinic_id:
-            existing_user.clinic_id = actor.clinic_id
+        ya_tiene_perfil_aqui = db.scalar(
+            select(Patient).where(Patient.user_id == existing_user.id, Patient.clinic_id == actor.clinic_id)
+        )
+        if ya_tiene_perfil_aqui:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Este paciente ya tiene un perfil en esta clinica (id={ya_tiene_perfil_aqui.id}); "
+                f"usa PATCH /patients/{ya_tiene_perfil_aqui.id} para editarlo",
+            )
 
+        # El usuario ya existe (en esta clinica, en otra, o sin clinica asignada aun):
+        # lo vinculamos como paciente nuevo en la clinica actual. Una misma persona puede
+        # tener un perfil de paciente distinto en cada clinica que la atienda.
         patient = Patient(
             user_id=existing_user.id,
             clinic_id=actor.clinic_id,
@@ -133,7 +133,7 @@ def create_my_patient_profile(
     if not user.clinic_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tu cuenta no esta asociada a una clinica")
 
-    existe = db.scalar(select(Patient).where(Patient.user_id == user.id))
+    existe = db.scalar(select(Patient).where(Patient.user_id == user.id, Patient.clinic_id == user.clinic_id))
     if existe:
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya tienes un perfil de paciente, usa PATCH /patients/me")
 
@@ -147,7 +147,7 @@ def create_my_patient_profile(
 
 @router.get("/me", response_model=PatientOut)
 def get_my_patient_profile(db: Session = Depends(get_db), user: User = Depends(get_active_user)):
-    patient = db.scalar(select(Patient).where(Patient.user_id == user.id))
+    patient = db.scalar(select(Patient).where(Patient.user_id == user.id, Patient.clinic_id == user.clinic_id))
     if not patient:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Aun no has completado tu perfil de paciente")
     return _to_out(patient)
@@ -159,7 +159,7 @@ def update_my_patient_profile(
     db: Session = Depends(get_db),
     user: User = Depends(get_active_user),
 ):
-    patient = db.scalar(select(Patient).where(Patient.user_id == user.id))
+    patient = db.scalar(select(Patient).where(Patient.user_id == user.id, Patient.clinic_id == user.clinic_id))
     if not patient:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Aun no has completado tu perfil de paciente")
 

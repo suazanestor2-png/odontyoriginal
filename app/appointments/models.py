@@ -1,6 +1,6 @@
 from datetime import date, time
 
-from sqlalchemy import Date, ForeignKey, String, Text, Time
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -30,3 +30,6 @@ class Appointment(Base, AuditMixin):
     origin: Mapped[str] = mapped_column(String(20), default="presencial")
     status: Mapped[str] = mapped_column(String(20), default="programada", index=True)
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    reminder_24h_sent: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    reminder_1h_sent: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

@@ -23,6 +23,7 @@ from app.appointments import router as appointments_router
 from app.clinical_history import router as clinical_history_router
 from app.odontogram import router as odontogram_router
 from app.notifications import router as notifications_router
+from app.core import internal_router
 
 # Seeds
 from app.identity.seed import seed_roles_and_permissions
@@ -33,9 +34,15 @@ import time
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Las tablas las crea SOLO Alembic (alembic upgrade head), nunca la app.
+    t0 = time.time()
+    print("[startup] seed_roles_and_permissions: inicio", flush=True)
     seed_roles_and_permissions()
+    print(f"[startup] seed_roles_and_permissions: ok ({time.time() - t0:.1f}s)", flush=True)
+
+    t1 = time.time()
+    print("[startup] seed_dental_catalogs: inicio", flush=True)
     seed_dental_catalogs()
+    print(f"[startup] seed_dental_catalogs: ok ({time.time() - t1:.1f}s)", flush=True)
     yield
 
 
@@ -53,6 +60,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count"],
 )
 
 app.include_router(auth_router.router)
@@ -63,6 +71,7 @@ app.include_router(appointments_router.router)
 app.include_router(clinical_history_router.router)
 app.include_router(odontogram_router.router)
 app.include_router(notifications_router.router)
+app.include_router(internal_router.router)
 
 
 @app.middleware("http")
@@ -80,16 +89,3 @@ async def handle_unexpected_error(request: Request, exc: Exception):
 @app.get("/")
 def health():
     return {"status": "ok"}
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    t0 = time.time()
-    print("[startup] seed_roles_and_permissions: inicio", flush=True)
-    seed_roles_and_permissions()
-    print(f"[startup] seed_roles_and_permissions: ok ({time.time() - t0:.1f}s)", flush=True)
-
-    t1 = time.time()
-    print("[startup] seed_dental_catalogs: inicio", flush=True)
-    seed_dental_catalogs()
-    print(f"[startup] seed_dental_catalogs: ok ({time.time() - t1:.1f}s)", flush=True)
-    yield

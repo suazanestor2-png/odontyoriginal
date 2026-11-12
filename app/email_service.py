@@ -175,3 +175,47 @@ def send_clinic_review_result(to_email: str, clinic_name: str, approved: bool) -
 </html>
 """
     send_email(to=to_email, subject=subject, body=text_body, html_body=html_body)
+
+
+def send_appointment_reminder_email(
+    to_email: str,
+    patient_name: str,
+    dentist_name: str,
+    scheduled_date,
+    start_time,
+    hours_before: int,
+) -> None:
+    fecha_str = scheduled_date.strftime("%d/%m/%Y")
+    hora_str = start_time.strftime("%H:%M")
+    cuando = "manana" if hours_before >= 24 else "en 1 hora"
+
+    safe_patient = html.escape(patient_name)
+    safe_dentist = html.escape(dentist_name)
+
+    text_body = (
+        f"Hola {patient_name},\n\n"
+        f"Te recordamos que tienes una cita {cuando} con {dentist_name}.\n"
+        f"Fecha: {fecha_str}\n"
+        f"Hora: {hora_str}\n\n"
+        "Si necesitas reprogramar o cancelar, contacta a la clinica."
+    )
+    html_body = f"""\
+<html>
+  <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 24px;">
+    <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px;">
+      <h2 style="color: #1a1a2e; margin-top: 0;">Recordatorio de cita</h2>
+      <p style="color: #333; font-size: 15px;">Hola <strong>{safe_patient}</strong>,</p>
+      <p style="color: #333; font-size: 15px;">
+        Te recordamos que tienes una cita <strong>{cuando}</strong> con <strong>{safe_dentist}</strong>.
+      </p>
+      <div style="text-align: center; margin: 24px 0;">
+        <span style="display: inline-block; font-size: 18px; font-weight: bold; color: #4f46e5; background: #eef2ff; padding: 14px 20px; border-radius: 8px;">
+          {fecha_str} - {hora_str}
+        </span>
+      </div>
+      <p style="color: #666; font-size: 13px;">Si necesitas reprogramar o cancelar, contacta a la clinica.</p>
+    </div>
+  </body>
+</html>
+"""
+    send_email(to=to_email, subject="Recordatorio de tu cita - Odonty", body=text_body, html_body=html_body)
