@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.clinics.models import Clinic
 from app.clinics.schemas import ClinicOut, ClinicReviewIn
-from app.core.cloudinary_service import upload_document
+from app.core.cloudinary_service import upload_pdf
 from app.core.database import get_db
 from app.core.deps import require_permission
 from app.core.security import hash_password
@@ -20,18 +20,21 @@ from app.email_service import (
 router = APIRouter(prefix="/clinics", tags=["Clinicas"])
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+PDF_CONTENT_TYPES = {"application/pdf", "application/x-pdf"}
 
 
-def _validar_imagen(file: UploadFile, campo: str) -> bytes:
-    content_types_validos = {"image/jpeg", "image/png", "image/webp"}
-    if file.content_type not in content_types_validos:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"El {campo} debe ser una imagen JPG, PNG o WEBP")
+def _validar_pdf(file: UploadFile, campo: str) -> bytes:
+    if file.content_type not in PDF_CONTENT_TYPES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"El {campo} debe ser un archivo PDF")
 
-    contenido = file.file.read()
-    if len(contenido) > MAX_FILE_SIZE:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"El {campo} no puede superar los 5 MB")
+    contenido = file.file.read(MAX_FILE_SIZE + 1)
     if len(contenido) == 0:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"El {campo} esta vacio")
+    if len(contenido) > MAX_FILE_SIZE:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"El {campo} no puede superar los 5 MB")
+    # El content_type lo manda el navegador y se puede falsificar: se revisa la firma real del archivo
+    if not contenido.startswith(b"%PDF-"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"El {campo} no es un PDF valido")
 
     return contenido
 
@@ -48,6 +51,7 @@ def register_clinic(
     password: str = Form(...),
     cedula_file: UploadFile = File(...),
     rut_file: UploadFile = File(...),
+    camara_comercio_file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
     # --- Validaciones de datos (las mismas reglas que ya usas en otros registros) ---
@@ -88,13 +92,15 @@ def register_clinic(
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "El rol 'admin' no existe, revisa el seed")
 
     # --- Validar los archivos antes de subirlos ---
-    cedula_bytes = _validar_imagen(cedula_file, "documento de cedula")
-    rut_bytes = _validar_imagen(rut_file, "documento de RUT")
+    cedula_bytes = _validar_pdf(cedula_file, "documento de cedula")
+    rut_bytes = _validar_pdf(rut_file, "documento de RUT")
+    camara_bytes = _validar_pdf(camara_comercio_file, "certificado de Camara de Comercio")
 
     # --- Subir a Cloudinary (fuera de la transaccion de BD, son operaciones independientes) ---
     try:
-        cedula_url = upload_document(cedula_bytes, public_id=f"cedula_{nit}")
-        rut_url = upload_document(rut_bytes, public_id=f"rut_{nit}")
+        cedula_url = upload_pdf(cedula_bytes, prefix=f"cedula_{nit}")
+        rut_url = upload_pdf(rut_bytes, prefix=f"rut_{nit}")
+        camara_comercio_url = upload_pdf(camara_bytes, prefix=f"camara_comercio_{nit}")
     except Exception:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudieron subir los documentos, intenta de nuevo")
 
@@ -106,6 +112,7 @@ def register_clinic(
         status="pending_review",
         cedula_url=cedula_url,
         rut_url=rut_url,
+        camara_comercio_url=camara_comercio_url,
     )
     db.add(clinic)
     db.flush()  # para obtener clinic.id sin cerrar la transaccion todavia
@@ -137,7 +144,10 @@ def register_clinic(
         select(User.email).join(Role, User.role_id == Role.id).where(Role.name == "super_admin")
     ).all()
     if super_admins:
-        send_clinic_pending_notification(list(super_admins), clinic.name, clinic.nit, clinic.cedula_url, clinic.rut_url)
+        send_clinic_pending_notification(
+            list(super_admins), clinic.name, clinic.nit,
+            clinic.cedula_url, clinic.rut_url, clinic.camara_comercio_url,
+        )
 
     send_clinic_registration_received(admin_user.email, admin_user.full_name, clinic.name)
 

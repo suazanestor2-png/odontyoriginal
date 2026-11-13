@@ -100,13 +100,14 @@ def send_welcome_email(to_email: str, full_name: str, temp_password: str) -> Non
     send_email(to=to_email, subject="Tu cuenta en Odonty", body=text_body, html_body=html_body)
 
 def send_clinic_pending_notification(
-    to_emails: list[str], clinic_name: str, nit: str, cedula_url: str, rut_url: str
+    to_emails: list[str], clinic_name: str, nit: str, cedula_url: str, rut_url: str, camara_comercio_url: str
 ) -> None:
     text_body = (
         f"Nueva clinica registrada: {clinic_name} (NIT {nit}).\n"
         "Esta pendiente de revision. Ingresa al panel de administracion para aprobarla o rechazarla.\n\n"
         f"Cedula: {cedula_url}\n"
-        f"RUT: {rut_url}"
+        f"RUT: {rut_url}\n"
+        f"Camara de Comercio: {camara_comercio_url}"
     )
     html_body = f"""\
 <html>
@@ -119,10 +120,12 @@ def send_clinic_pending_notification(
       <p style="color: #666; font-size: 13px; margin-bottom: 24px;">
         Ingresa al panel de administracion para aprobarla o rechazarla.
       </p>
-      <p style="color: #333; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Cedula:</p>
-      <img src="{cedula_url}" alt="Cedula" style="max-width: 100%; border-radius: 6px; margin-bottom: 20px; border: 1px solid #e5e5e5;">
-      <p style="color: #333; font-size: 14px; font-weight: bold; margin-bottom: 8px;">RUT:</p>
-      <img src="{rut_url}" alt="RUT" style="max-width: 100%; border-radius: 6px; border: 1px solid #e5e5e5;">
+      <p style="color: #333; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Documentos (PDF):</p>
+      <ul style="color: #333; font-size: 14px; line-height: 1.8; padding-left: 20px;">
+        <li><a href="{cedula_url}" style="color: #2563eb;">Cedula del representante legal</a></li>
+        <li><a href="{rut_url}" style="color: #2563eb;">RUT</a></li>
+        <li><a href="{camara_comercio_url}" style="color: #2563eb;">Certificado de Camara de Comercio</a></li>
+      </ul>
     </div>
   </body>
 </html>

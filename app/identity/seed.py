@@ -46,7 +46,6 @@ ROLE_PERMISSIONS = {
         "appointments.view", "appointments.create", "appointments.edit",
         "notifications.create",
     ],
-    "usuario": [],
 }
 
 
