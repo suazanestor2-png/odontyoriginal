@@ -23,6 +23,7 @@ class ClinicOut(BaseModel):
     status: str
     cedula_url: str | None
     rut_url: str | None
+    camara_comercio_url: str | None
 
 
 class ClinicReviewIn(BaseModel):

@@ -18,6 +18,7 @@ class Clinic(Base, AuditMixin):
     timezone: Mapped[str] = mapped_column(String(50), default="America/Bogota")
     cedula_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     rut_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    camara_comercio_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # dentro de la clase Clinic:
     opening_time: Mapped[time] = mapped_column(Time, default=time(8, 0))
     closing_time: Mapped[time] = mapped_column(Time, default=time(18, 0))

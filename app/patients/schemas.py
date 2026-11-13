@@ -44,7 +44,9 @@ class PatientCreateIn(BaseModel):
     guardian_relationship: str | None = Field(default=None, max_length=50)
     emergency_contact_name: str | None = Field(default=None, max_length=150)
     emergency_contact_phone: str | None = None
-    allergies: str | None = None
+    allergies: str | None = Field(default=None, max_length=1000)
+    current_medications: str | None = Field(default=None, max_length=1000)
+    medical_conditions: str | None = Field(default=None, max_length=1000)
     notes: str | None = None
 
     @model_validator(mode="after")
@@ -71,7 +73,9 @@ class PatientUpdateIn(BaseModel):
     guardian_relationship: str | None = Field(default=None, max_length=50)
     emergency_contact_name: str | None = Field(default=None, max_length=150)
     emergency_contact_phone: str | None = None
-    allergies: str | None = None
+    allergies: str | None = Field(default=None, max_length=1000)
+    current_medications: str | None = Field(default=None, max_length=1000)
+    medical_conditions: str | None = Field(default=None, max_length=1000)
     notes: str | None = None
     # La regla de "responsable obligatorio si es menor" se revisa en el router
     # contra el estado final del registro, porque esta es una edicion parcial.
@@ -100,6 +104,8 @@ class PatientOut(BaseModel):
     emergency_contact_name: str | None
     emergency_contact_phone: str | None
     allergies: str | None
+    current_medications: str | None
+    medical_conditions: str | None
     notes: str | None
 
 
@@ -108,3 +114,12 @@ class PatientCheckOut(BaseModel):
     exists: bool
     patient_id: int | None
     full_name: str | None
+
+class PatientAlertsOut(BaseModel):
+    """Lo que el odontologo debe ver antes de atender (anestesia, recetas, extracciones)."""
+    patient_id: int
+    full_name: str
+    allergies: str | None
+    current_medications: str | None
+    medical_conditions: str | None
+    has_alerts: bool

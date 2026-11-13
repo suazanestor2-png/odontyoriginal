@@ -10,6 +10,7 @@ from app.identity.models import User
 from app.patients.models import Patient
 from app.patients.schemas import (
     MENSAJE_RESPONSABLE,
+    PatientAlertsOut,
     PatientCheckOut,
     PatientCreateIn,
     PatientOut,
@@ -125,6 +126,30 @@ def get_patient(
     actor: User = Depends(require_permission("patients.view")),
 ):
     return _paciente_de_mi_clinica(db, patient_id, actor)
+
+
+@router.get("/{patient_id}/alerts", response_model=PatientAlertsOut)
+def get_patient_alerts(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("patients.view")),
+):
+    patient = _paciente_de_mi_clinica(db, patient_id, actor)
+
+    def _limpio(texto: str | None) -> str | None:
+        return texto.strip() if texto and texto.strip() else None
+
+    alergias = _limpio(patient.allergies)
+    medicamentos = _limpio(patient.current_medications)
+    condiciones = _limpio(patient.medical_conditions)
+    return PatientAlertsOut(
+        patient_id=patient.id,
+        full_name=patient.full_name,
+        allergies=alergias,
+        current_medications=medicamentos,
+        medical_conditions=condiciones,
+        has_alerts=any((alergias, medicamentos, condiciones)),
+    )
 
 
 @router.patch("/{patient_id}", response_model=PatientOut)

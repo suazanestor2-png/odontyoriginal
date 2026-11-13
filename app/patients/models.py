@@ -38,7 +38,10 @@ class Patient(Base, AuditMixin):
     emergency_contact_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
     emergency_contact_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
+    # Alertas medicas: se muestran destacadas en historia clinica y odontograma
     allergies: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_medications: Mapped[str | None] = mapped_column(Text, nullable=True)  # ej. anticoagulantes
+    medical_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)  # ej. diabetes, embarazo
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     @property

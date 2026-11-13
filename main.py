@@ -14,6 +14,7 @@ from app.appointments import models as appointment_models  # noqa: F401
 from app.clinical_history import models as clinical_history_models  # noqa: F401
 from app.odontogram import models as odontogram_models  # noqa: F401
 from app.notifications import models as notifications_models  # noqa: F401
+from app.catalogs import models as catalogs_models  # noqa: F401
 
 # Routers
 from app.identity import auth_router, users_router
@@ -23,11 +24,13 @@ from app.appointments import router as appointments_router
 from app.clinical_history import router as clinical_history_router
 from app.odontogram import router as odontogram_router
 from app.notifications import router as notifications_router
+from app.catalogs import router as catalogs_router
 from app.core import internal_router
 
 # Seeds
 from app.identity.seed import seed_roles_and_permissions
 from app.odontogram.seed import seed_dental_catalogs
+from app.catalogs.seed import seed_cups
 
 import time
 
@@ -43,6 +46,10 @@ async def lifespan(app: FastAPI):
     print("[startup] seed_dental_catalogs: inicio", flush=True)
     seed_dental_catalogs()
     print(f"[startup] seed_dental_catalogs: ok ({time.time() - t1:.1f}s)", flush=True)
+
+    t2 = time.time()
+    seed_cups()
+    print(f"[startup] seed_cups: ok ({time.time() - t2:.1f}s)", flush=True)
     yield
 
 
@@ -71,6 +78,7 @@ app.include_router(appointments_router.router)
 app.include_router(clinical_history_router.router)
 app.include_router(odontogram_router.router)
 app.include_router(notifications_router.router)
+app.include_router(catalogs_router.router)
 app.include_router(internal_router.router)
 
 
