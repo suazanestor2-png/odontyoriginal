@@ -6,7 +6,7 @@ from app.appointments.models import Appointment
 from app.clinical_history.models import ClinicalEntry
 from app.clinical_history.schemas import ClinicalEntryCreateIn, ClinicalEntryOut
 from app.core.database import get_db
-from app.core.deps import get_active_user, require_permission
+from app.core.deps import require_permission
 from app.identity.audit import log_event
 from app.identity.models import User
 from app.patients.models import Patient
@@ -26,7 +26,7 @@ def _to_out(e: ClinicalEntry, db: Session) -> ClinicalEntryOut:
     return ClinicalEntryOut(
         id=e.id,
         patient_id=e.patient_id,
-        patient_name=e.patient.user.full_name,
+        patient_name=e.patient.full_name,
         appointment_id=e.appointment_id,
         dentist_id=e.dentist_id,
         dentist_name=e.dentist.full_name,
@@ -82,24 +82,6 @@ def create_clinical_entry(
     db.refresh(entry)
     log_event(db, "CLINICAL_ENTRY_CREATED", actor.id, f"entry={entry.id} appointment={appt.id}")
     return _to_out(entry, db)
-
-
-@router.get("/me", response_model=list[ClinicalEntryOut])
-def my_clinical_history(
-    db: Session = Depends(get_db),
-    actor: User = Depends(get_active_user),
-):
-    if actor.role.name != "usuario":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Este endpoint es solo para pacientes")
-
-    patient = db.scalar(select(Patient).where(Patient.user_id == actor.id))
-    if not patient:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Aun no tienes un perfil de paciente")
-
-    entries = db.scalars(
-        select(ClinicalEntry).where(ClinicalEntry.patient_id == patient.id).order_by(ClinicalEntry.created_at.desc())
-    ).all()
-    return [_to_out(e, db) for e in entries]
 
 
 @router.get("", response_model=list[ClinicalEntryOut])

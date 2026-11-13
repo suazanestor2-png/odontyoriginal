@@ -23,7 +23,7 @@ def _to_out(e: OdontogramEntry, db: Session) -> OdontogramEntryOut:
     return OdontogramEntryOut(
         id=e.id,
         patient_id=e.patient_id,
-        patient_name=e.patient.user.full_name,
+        patient_name=e.patient.full_name,
         appointment_id=e.appointment_id,
         dentist_id=e.dentist_id,
         dentist_name=e.dentist.full_name,

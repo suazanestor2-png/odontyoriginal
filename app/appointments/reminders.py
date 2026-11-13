@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.appointments.models import Appointment
 from app.email_service import send_appointment_reminder_email
-from app.notifications.models import Notification
 
 BOGOTA_TZ = ZoneInfo("America/Bogota")
 
@@ -41,27 +40,15 @@ def _enviar_ventana(
             patient = appt.patient
             dentist = appt.dentist
 
-            if patient and patient.user and patient.user.email:
+            if patient and patient.email:
                 send_appointment_reminder_email(
-                    to_email=patient.user.email,
-                    patient_name=patient.user.full_name,
+                    to_email=patient.email,
+                    patient_name=patient.full_name,
                     dentist_name=dentist.full_name,
                     scheduled_date=appt.scheduled_date,
                     start_time=appt.start_time,
                     hours_before=hours_before,
                 )
-                db.add(Notification(
-                    clinic_id=appt.clinic_id,
-                    user_id=patient.user_id,
-                    type="recordatorio_cita",
-                    title="Recordatorio de cita",
-                    message=(
-                        f"Tienes una cita el {appt.scheduled_date.strftime('%d/%m/%Y')} "
-                        f"a las {appt.start_time.strftime('%H:%M')}"
-                    ),
-                    appointment_id=appt.id,
-                    patient_id=appt.patient_id,
-                ))
 
             setattr(appt, flag_attr, True)
             enviados += 1

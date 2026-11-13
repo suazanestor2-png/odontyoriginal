@@ -23,7 +23,7 @@ ESTADOS_ACTIVOS = ("programada", "confirmada")
 
 def _to_out(a: Appointment) -> AppointmentOut:
     return AppointmentOut(
-        id=a.id, patient_id=a.patient_id, patient_name=a.patient.user.full_name,
+        id=a.id, patient_id=a.patient_id, patient_name=a.patient.full_name,
         dentist_id=a.dentist_id, dentist_name=a.dentist.full_name,
         scheduled_date=a.scheduled_date, start_time=a.start_time, end_time=a.end_time,
         reason=a.reason, origin=a.origin, status=a.status, cancellation_reason=a.cancellation_reason,

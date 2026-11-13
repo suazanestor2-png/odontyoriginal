@@ -2,6 +2,10 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+DOCUMENT_TYPE_PATTERN = r"^(TI|CC|CE|PA)$"
+GENDER_PATTERN = r"^(Masculino|Femenino)$"
+BLOOD_TYPE_PATTERN = r"^(O|A|B|AB)[+-]$"
+
 
 def _calc_is_minor(birth_date: date | None) -> bool:
     if not birth_date:
@@ -11,11 +15,27 @@ def _calc_is_minor(birth_date: date | None) -> bool:
     return age < 18
 
 
-class PatientBase(BaseModel):
-    document_type: str = Field(default="CC", pattern=r"^(TI|CC|CE|PA)$")
-    birth_date: date | None = None
-    gender: str | None = Field(default=None, max_length=20)
-    blood_type: str | None = Field(default=None, pattern=r"^(O|A|B|AB)[+-]$")
+def falta_responsable(birth_date, guardian_full_name, guardian_document_number, guardian_phone) -> bool:
+    return _calc_is_minor(birth_date) and not (guardian_full_name and guardian_document_number and guardian_phone)
+
+
+MENSAJE_RESPONSABLE = (
+    "El paciente es menor de edad: guardian_full_name, guardian_document_number y guardian_phone son obligatorios"
+)
+
+
+class PatientCreateIn(BaseModel):
+    # Obligatorios (registro rapido)
+    full_name: str = Field(min_length=3, max_length=150)
+    document_type: str = Field(default="CC", pattern=DOCUMENT_TYPE_PATTERN)
+    document_number: str = Field(pattern=r"^[0-9]{6,10}$")
+    email: str = Field(max_length=255)
+    phone_number: str
+    birth_date: date
+    gender: str = Field(pattern=GENDER_PATTERN)
+
+    # Opcionales
+    blood_type: str | None = Field(default=None, pattern=BLOOD_TYPE_PATTERN)
     address: str | None = Field(default=None, max_length=255)
     eps: str | None = Field(default=None, max_length=100)
     guardian_full_name: str | None = Field(default=None, max_length=150)
@@ -29,23 +49,20 @@ class PatientBase(BaseModel):
 
     @model_validator(mode="after")
     def _responsable_si_es_menor(self):
-        if _calc_is_minor(self.birth_date):
-            if not self.guardian_full_name or not self.guardian_document_number or not self.guardian_phone:
-                raise ValueError(
-                    "El paciente es menor de edad: guardian_full_name, guardian_document_number y guardian_phone son obligatorios"
-                )
+        if falta_responsable(self.birth_date, self.guardian_full_name, self.guardian_document_number, self.guardian_phone):
+            raise ValueError(MENSAJE_RESPONSABLE)
         return self
 
 
-class PatientCreateIn(PatientBase):
-    pass
-
-
 class PatientUpdateIn(BaseModel):
-    document_type: str | None = Field(default=None, pattern=r"^(TI|CC|CE|PA)$")
+    full_name: str | None = Field(default=None, min_length=3, max_length=150)
+    document_type: str | None = Field(default=None, pattern=DOCUMENT_TYPE_PATTERN)
+    document_number: str | None = Field(default=None, pattern=r"^[0-9]{6,10}$")
+    email: str | None = Field(default=None, max_length=255)
+    phone_number: str | None = None
     birth_date: date | None = None
-    gender: str | None = Field(default=None, max_length=20)
-    blood_type: str | None = Field(default=None, pattern=r"^(O|A|B|AB)[+-]$")
+    gender: str | None = Field(default=None, pattern=GENDER_PATTERN)
+    blood_type: str | None = Field(default=None, pattern=BLOOD_TYPE_PATTERN)
     address: str | None = Field(default=None, max_length=255)
     eps: str | None = Field(default=None, max_length=100)
     guardian_full_name: str | None = Field(default=None, max_length=150)
@@ -56,27 +73,20 @@ class PatientUpdateIn(BaseModel):
     emergency_contact_phone: str | None = None
     allergies: str | None = None
     notes: str | None = None
-    # Nota: la validacion de "responsable obligatorio si es menor" no aplica aqui porque
-    # es una edicion parcial; se revisa en el router contra el estado final del registro.
-
-
-class PatientRegisterIn(PatientBase):
-    # Usado por el personal de la clinica para registrar un paciente nuevo (crea su User + Patient)
-    email: str
-    document_number: str = Field(pattern=r"^[0-9]{6,10}$")
-    full_name: str = Field(min_length=3, max_length=150)
-    phone_number: str
+    # La regla de "responsable obligatorio si es menor" se revisa en el router
+    # contra el estado final del registro, porque esta es una edicion parcial.
 
 
 class PatientOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    user_id: int
+    clinic_id: int
     full_name: str
-    email: str
-    document_number: str
     document_type: str
+    document_number: str
+    email: str
+    phone_number: str
     birth_date: date | None
     is_minor: bool
     gender: str | None
@@ -92,11 +102,9 @@ class PatientOut(BaseModel):
     allergies: str | None
     notes: str | None
 
+
 class PatientCheckOut(BaseModel):
-    user_exists: bool
-    user_id: int | None
+    # Solo informa sobre la clinica de quien consulta; nunca revela otras clinicas
+    exists: bool
+    patient_id: int | None
     full_name: str | None
-    email: str | None
-    document_number: str | None
-    has_patient_profile: bool
-    same_clinic: bool

@@ -17,7 +17,7 @@ from app.core.validators import _telefono # este import para dar error 409
 router = APIRouter(prefix="/users", tags=["Usuarios y permisos"])
 
 # Roles que un admin (no super_admin) tiene permitido tocar y asignar
-ADMIN_ALLOWED_ROLES = {"usuario", "odontologo", "recepcionista"}
+ADMIN_ALLOWED_ROLES = {"odontologo", "recepcionista"}
 
 
 def to_user_out(user: User) -> UserOut:

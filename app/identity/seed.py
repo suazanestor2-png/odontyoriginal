@@ -1,7 +1,7 @@
 from app.core.database import SessionLocal
 from app.identity.models import Permission, Role
 
-ROLE_NAMES = ["super_admin", "admin", "odontologo", "recepcionista", "usuario"]
+ROLE_NAMES = ["super_admin", "admin", "odontologo", "recepcionista"]
 
 # Iremos agregando permisos aqui a medida que construyamos cada endpoint.
 PERMISSION_CODES = {

@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_active_user, get_current_user              # CAMBIO: get_active_user
-from app.identity.models import RefreshToken, Role, User
-from app.identity.schemas import LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
+from app.identity.models import RefreshToken, User
+from app.identity.schemas import LoginIn, RefreshIn, TokenOut, UserOut
 from app.identity.schemas import ChangePasswordIn                        # NUEVO
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.identity.schemas import MFACodeIn, MFALoginRequiredOut, MFASetupOut, MFAVerifyIn
@@ -54,34 +54,8 @@ def issue_tokens(db: Session, user: User) -> TokenOut:
     )
 
 
-
-
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(data: RegisterIn, db: Session = Depends(get_db)):
-    email = data.email.lower()
-
-    exists = db.scalar(
-        select(User).where((User.email == email) | (User.document_number == data.document_number))
-    )
-    if exists:
-        raise HTTPException(status.HTTP_409_CONFLICT, "El correo o el documento ya estan registrados")
-
-    usuario_role = db.scalar(select(Role).where(Role.name == "usuario"))
-    if not usuario_role:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "El rol 'usuario' no existe, revisa el seed")
-
-    user = User(
-        email=email,
-        document_number=data.document_number,
-        full_name=data.full_name.strip(),
-        phone_number=data.phone_number,
-        hashed_password=hash_password(data.password),
-        role_id=usuario_role.id,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return to_user_out(user)
+# El registro publico (/auth/register) se elimino: las cuentas solo son para el personal
+# de la clinica y las crea el admin desde /users. Los pacientes no tienen cuenta.
 
 
 @router.post("/login", response_model=TokenOut | MFALoginRequiredOut)
@@ -294,7 +268,6 @@ def mfa_enable(data: MFACodeIn, user: User = Depends(get_active_user), db: Sessi
     return {"detail": "MFA activado correctamente"}
 
 
-
 @router.post("/mfa/disable")
 def mfa_disable(data: MFACodeIn, user: User = Depends(get_active_user), db: Session = Depends(get_db)):
     if not user.mfa_enabled or not verify_mfa_code(user.mfa_secret, data.code):
@@ -323,4 +296,3 @@ def change_password(
     revoke_all_refresh_tokens(db, user.id)
     db.commit()
     log_event(db, "PASSWORD_CHANGED", user.id)
-
