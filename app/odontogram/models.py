@@ -92,4 +92,9 @@ class OdontogramEntry(Base, AuditMixin):
     procedure_id: Mapped[int | None] = mapped_column(ForeignKey("dental_procedures.id"), nullable=True, index=True)
     procedure: Mapped["DentalProcedure | None"] = relationship(foreign_keys=[procedure_id])
 
+    # Codigo CUPS oficial del procedimiento (Res. 2706 de 2025). Obligatorio para registros
+    # nuevos con procedimiento; null en registros anteriores o en hallazgos sin procedimiento.
+    cups_code: Mapped[str | None] = mapped_column(ForeignKey("cups_codes.code"), nullable=True, index=True)
+    cups: Mapped["CupsCode | None"] = relationship(foreign_keys=[cups_code])
+
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
