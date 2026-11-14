@@ -3,6 +3,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.appointments.models import Appointment
+from app.catalogs.models import CupsCode
 from app.core.database import get_db
 from app.core.deps import require_permission
 from app.identity.audit import log_event
@@ -33,6 +34,8 @@ def _to_out(e: OdontogramEntry, db: Session) -> OdontogramEntryOut:
         condition_name=e.condition.name if e.condition else None,
         procedure_code=e.procedure.code if e.procedure else None,
         procedure_name=e.procedure.name if e.procedure else None,
+        cups_code=e.cups_code,
+        cups_name=e.cups.name if e.cups else None,
         notes=e.notes,
         created_at=e.created_at,
         created_by=e.created_by,
@@ -68,6 +71,12 @@ def create_odontogram_entry(
         if not procedure:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"procedure_code invalido: {data.procedure_code}")
 
+    cups = None
+    if data.cups_code:
+        cups = db.get(CupsCode, data.cups_code)
+        if not cups or not cups.is_active:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"cups_code invalido o no vigente: {data.cups_code}")
+
     entry = OdontogramEntry(
         clinic_id=appt.clinic_id,
         patient_id=appt.patient_id,
@@ -77,6 +86,7 @@ def create_odontogram_entry(
         surface=data.surface,
         condition_id=condition.id if condition else None,
         procedure_id=procedure.id if procedure else None,
+        cups_code=cups.code if cups else None,
         notes=data.notes,
         created_by=actor.id,
     )
