@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -32,3 +32,24 @@ class ClinicalEntry(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+
+class ClinicalAccessLog(Base):
+    """
+    Quien consulto la informacion clinica de un paciente y cuando (historia clinica, odontograma
+    y alertas medicas). Solo se agrega, nunca se edita ni se borra.
+    """
+    __tablename__ = "clinical_access_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"), index=True)
+    patient: Mapped["Patient"] = relationship(foreign_keys=[patient_id])
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user: Mapped["User"] = relationship(foreign_keys=[user_id])
+
+    # ej. historia.listar, historia.ver_entrada, odontograma.ver, odontograma.historial, alertas.ver
+    action: Mapped[str] = mapped_column(String(40))
+    resource_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    accessed_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)

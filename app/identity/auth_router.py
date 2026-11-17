@@ -23,6 +23,7 @@ from app.identity.schemas import ForgotPasswordIn, ResetPasswordIn
 from app.clinics.models import Clinic
 from app.identity.tokens import revoke_all_refresh_tokens #Funcion para reutilizar
 from app.core.validators import _telefono
+from app.identity.permissions import effective_permissions
 
 
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
@@ -149,8 +150,10 @@ def logout(data: RefreshIn, db: Session = Depends(get_db)):
 # /me se queda con get_current_user a proposito: el frontend puede consultarlo
 # aunque deba cambiar la clave, y asi leer must_change_password.
 @router.get("/me", response_model=UserOut)
-def me(user: User = Depends(get_current_user)):
-    return to_user_out(user)
+def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    out = to_user_out(user)
+    out.permissions = sorted(effective_permissions(db, user))
+    return out
 
 
 @router.patch("/me", response_model=UserOut)

@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from datetime import date, datetime, time
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.appointments.models import Appointment
-from app.clinical_history.models import ClinicalEntry
-from app.clinical_history.schemas import ClinicalEntryCreateIn, ClinicalEntryOut
+from app.clinical_history.access import log_access
+from app.clinical_history.models import ClinicalAccessLog, ClinicalEntry
+from app.clinical_history.schemas import AccessLogOut, ClinicalEntryCreateIn, ClinicalEntryOut
 from app.core.database import get_db
 from app.controls.models import PatientControl
 from app.controls.router import crear_control
@@ -107,6 +110,7 @@ def create_clinical_entry(
 
 @router.get("", response_model=list[ClinicalEntryOut])
 def list_clinical_history(
+    request: Request,
     response: Response,
     patient_id: int = Query(...),
     limit: int = Query(50, ge=1, le=200),
@@ -122,12 +126,52 @@ def list_clinical_history(
     total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery()))
     items = db.scalars(query.order_by(ClinicalEntry.created_at.desc()).limit(limit).offset(offset)).all()
 
+    log_access(db, request, actor, patient.clinic_id, patient.id, "historia.listar")
     response.headers["X-Total-Count"] = str(total)
     return [_to_out(e, db) for e in items]
 
 
+@router.get("/access-log", response_model=list[AccessLogOut])
+def clinical_access_log(
+    response: Response,
+    patient_id: int | None = Query(None),
+    user_id: int | None = Query(None),
+    from_date: date | None = Query(None),
+    to_date: date | None = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("clinical_history.audit")),
+):
+    """Quien consulto la informacion clinica de los pacientes y cuando (solo admin)."""
+    query = select(ClinicalAccessLog)
+    if actor.role.name != "super_admin":
+        query = query.where(ClinicalAccessLog.clinic_id == actor.clinic_id)
+    if patient_id:
+        query = query.where(ClinicalAccessLog.patient_id == patient_id)
+    if user_id:
+        query = query.where(ClinicalAccessLog.user_id == user_id)
+    if from_date:
+        query = query.where(ClinicalAccessLog.accessed_at >= datetime.combine(from_date, time.min))
+    if to_date:
+        query = query.where(ClinicalAccessLog.accessed_at <= datetime.combine(to_date, time.max))
+
+    total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery()))
+    items = db.scalars(query.order_by(ClinicalAccessLog.id.desc()).limit(limit).offset(offset)).all()
+    response.headers["X-Total-Count"] = str(total)
+    return [
+        AccessLogOut(
+            id=a.id, patient_id=a.patient_id, patient_name=a.patient.full_name, user_id=a.user_id,
+            user_name=a.user.full_name, user_role=a.user.role.name, action=a.action,
+            resource_id=a.resource_id, ip_address=a.ip_address, accessed_at=a.accessed_at,
+        )
+        for a in items
+    ]
+
+
 @router.get("/{entry_id}", response_model=ClinicalEntryOut)
 def get_clinical_entry(
+    request: Request,
     entry_id: int,
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("clinical_history.view")),
@@ -135,4 +179,5 @@ def get_clinical_entry(
     entry = db.get(ClinicalEntry, entry_id)
     if not entry or (actor.role.name != "super_admin" and entry.clinic_id != actor.clinic_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Entrada no encontrada")
+    log_access(db, request, actor, entry.clinic_id, entry.patient_id, "historia.ver_entrada", entry.id)
     return _to_out(entry, db)

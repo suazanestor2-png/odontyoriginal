@@ -1,5 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status   # NUEVO: BackgroundTasks
-from sqlalchemy import func, or_, select                                                # NUEVO: or_
+from sqlalchemy import delete, func, or_, select                                                # NUEVO: or_
 from sqlalchemy.exc import IntegrityError                                         # NUEVO
 from sqlalchemy.orm import Session
 
@@ -8,7 +8,7 @@ from app.core.deps import require_permission
 from app.core.security import generate_temp_password, hash_password              # NUEVO
 from app.email_service import send_welcome_email                                  # NUEVO
 from app.identity.audit import log_event
-from app.identity.models import AuditLog, Role, User
+from app.identity.models import AuditLog, Role, User, UserPermissionOverride
 from app.identity.schemas import ActiveChangeIn, AuditLogOut, RoleChangeIn, UserCreateIn, UserUpdateIn, UserOut # NUEVO: ActiviChangeIn
 from app.identity.tokens import revoke_all_refresh_tokens #NUEVO Funcion para reutilizar
 from app.core.validators import _telefono # este import para dar error 409
@@ -120,7 +120,7 @@ def change_role(
         if target.role.name not in ADMIN_ALLOWED_ROLES:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Un admin no puede modificar a otro admin")
         if data.role not in ADMIN_ALLOWED_ROLES:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Un admin solo puede asignar odontologo, recepcionista o usuario")
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Un admin solo puede asignar odontologo o recepcionista")
 
     if data.role == "super_admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "No se puede asignar el rol super admin")
@@ -129,6 +129,9 @@ def change_role(
     if not new_role:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Rol invalido")
 
+    if target.role_id != new_role.id:
+        # Los permisos personalizados eran para el rol anterior: se descartan
+        db.execute(delete(UserPermissionOverride).where(UserPermissionOverride.user_id == target.id))
     target.role_id = new_role.id
     db.commit()
     db.refresh(target)

@@ -38,3 +38,16 @@ class ClinicalEntryOut(BaseModel):
     created_by_name: str | None
     next_control_id: int | None = None
     next_control_date: date | None = None
+
+
+class AccessLogOut(BaseModel):
+    id: int
+    patient_id: int
+    patient_name: str
+    user_id: int
+    user_name: str
+    user_role: str
+    action: str
+    resource_id: int | None
+    ip_address: str | None
+    accessed_at: datetime

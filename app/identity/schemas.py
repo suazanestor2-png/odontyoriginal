@@ -16,6 +16,8 @@ class UserOut(BaseModel):
     is_active: bool
     phone_number: str | None = None            # NUEVO
     must_change_password: bool = False         # NUEVO
+    # Permisos efectivos (solo los llena /auth/me, para que el frontend muestre u oculte opciones)
+    permissions: list[str] = []
 
 
 def validate_password_strength(v: str) -> str:
@@ -155,3 +157,26 @@ class UserUpdateIn(BaseModel):
     full_name: str | None = Field(default=None, min_length=3, max_length=150)
     phone_number: str | None = None
     email: EmailStr | None = None
+
+
+class PermissionCatalogOut(BaseModel):
+    code: str
+    description: str | None
+    delegable: bool  # si un admin se lo puede dar o quitar a su personal
+
+
+class UserPermissionsOut(BaseModel):
+    user_id: int
+    full_name: str
+    role_name: str
+    role_permissions: list[str]   # los que trae por su rol
+    granted: list[str]            # otorgados ademas del rol
+    revoked: list[str]            # quitados del rol
+    effective: list[str]          # los que realmente tiene
+    editable: list[str]           # los que quien consulta puede dar o quitar
+
+
+class UserPermissionsUpdateIn(BaseModel):
+    """Reemplaza las excepciones del usuario. Enviar listas vacias lo deja igual a su rol."""
+    granted: list[str] = Field(default_factory=list, max_length=50)
+    revoked: list[str] = Field(default_factory=list, max_length=50)

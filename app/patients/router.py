@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from app.clinical_history.access import log_access
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -130,6 +131,7 @@ def get_patient(
 
 @router.get("/{patient_id}/alerts", response_model=PatientAlertsOut)
 def get_patient_alerts(
+    request: Request,
     patient_id: int,
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("patients.view")),
@@ -142,6 +144,7 @@ def get_patient_alerts(
     alergias = _limpio(patient.allergies)
     medicamentos = _limpio(patient.current_medications)
     condiciones = _limpio(patient.medical_conditions)
+    log_access(db, request, actor, patient.clinic_id, patient.id, "alertas.ver")
     return PatientAlertsOut(
         patient_id=patient.id,
         full_name=patient.full_name,

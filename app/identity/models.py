@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, UniqueConstraint
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 from app.core.mixins import AuditMixin, utcnow
 from app.core.database import Base
@@ -92,3 +92,19 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+
+class UserPermissionOverride(Base, AuditMixin):
+    """
+    Permisos puntuales de una persona, encima de los de su rol (los roles son iguales para
+    todas las clinicas, por eso el admin no los edita: personaliza a cada usuario).
+    allowed=True  -> se le OTORGA un permiso que su rol no trae
+    allowed=False -> se le QUITA un permiso que su rol si trae
+    """
+    __tablename__ = "user_permission_overrides"
+    __table_args__ = (UniqueConstraint("user_id", "permission_id", name="uq_user_permission_override"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    permission_id: Mapped[int] = mapped_column(ForeignKey("permissions.id"))
+    permission: Mapped["Permission"] = relationship(foreign_keys=[permission_id])
+    allowed: Mapped[bool] = mapped_column(Boolean)

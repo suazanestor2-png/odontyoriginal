@@ -18,9 +18,10 @@ from app.catalogs import models as catalogs_models  # noqa: F401
 from app.controls import models as controls_models  # noqa: F401
 from app.billing import models as billing_models  # noqa: F401
 from app.subscriptions import models as subscriptions_models  # noqa: F401
+from app.consents import models as consents_models  # noqa: F401
 
 # Routers
-from app.identity import auth_router, users_router
+from app.identity import auth_router, permissions_router, users_router
 from app.clinics import router as clinics_router
 from app.patients import router as patients_router
 from app.appointments import router as appointments_router
@@ -32,6 +33,7 @@ from app.controls import router as controls_router
 from app.billing import expenses_router, invoices_router, settings_router as billing_settings_router
 from app.reports import router as reports_router
 from app.subscriptions import router as subscriptions_router
+from app.consents import router as consents_router
 from app.core import internal_router
 
 # Seeds
@@ -84,6 +86,7 @@ app.add_middleware(
 
 app.include_router(auth_router.router)
 app.include_router(users_router.router)
+app.include_router(permissions_router.router)
 app.include_router(clinics_router.router)
 app.include_router(patients_router.router)
 app.include_router(appointments_router.router)
@@ -97,6 +100,7 @@ app.include_router(expenses_router.router)
 app.include_router(billing_settings_router.router)
 app.include_router(reports_router.router)
 app.include_router(subscriptions_router.router)
+app.include_router(consents_router.router)
 app.include_router(internal_router.router)
 
 

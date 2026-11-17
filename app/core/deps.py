@@ -40,7 +40,8 @@ def require_permission(code: str):
         user: User = Depends(get_active_user),   # CAMBIO: antes get_current_user
         db: Session = Depends(get_db),
     ) -> User:
-        user_permissions = {p.code for p in user.role.permissions}
+        from app.identity.permissions import effective_permissions  # import aqui para evitar ciclos
+        user_permissions = effective_permissions(db, user)
         if code not in user_permissions:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "No tienes permisos para esta accion")
         # Suscripcion vencida (despues de los dias de gracia): la clinica queda en solo lectura

@@ -35,6 +35,9 @@ PERMISSION_CODES = {
     "clinic.settings": "Editar los datos, el logo y los horarios de la clinica",
     "clinics.view": "Ver el listado de todas las clinicas",
     "subscriptions.manage": "Gestionar planes y renovar suscripciones de las clinicas",
+    "users.manage_permissions": "Dar o quitar permisos puntuales al personal de la clinica",
+    "consents.manage": "Registrar y revocar autorizaciones de tratamiento de datos (Ley 1581)",
+    "clinical_history.audit": "Ver quien consulto la informacion clinica de los pacientes",
 }
 
 ROLE_PERMISSIONS = {
@@ -49,6 +52,7 @@ ROLE_PERMISSIONS = {
         "controls.view", "controls.create", "controls.edit",
         "billing.view", "billing.create", "billing.void", "billing.settings",
         "expenses.manage", "reports.view", "clinic.settings",
+        "users.manage_permissions", "consents.manage", "clinical_history.audit",
     ],
     "odontologo": [
         "patients.view",
@@ -63,6 +67,7 @@ ROLE_PERMISSIONS = {
         "notifications.create",
         "controls.view", "controls.create", "controls.edit",
         "billing.view", "billing.create",
+        "consents.manage",
     ],
 }
 

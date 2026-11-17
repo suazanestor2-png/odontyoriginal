@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from app.clinical_history.access import log_access
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -99,6 +100,7 @@ def create_odontogram_entry(
 
 @router.get("/{patient_id}", response_model=list[OdontogramEntryOut])
 def get_current_odontogram(
+    request: Request,
     patient_id: int,
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("odontogram.view")),
@@ -134,10 +136,12 @@ def get_current_odontogram(
     )
 
     entries = db.scalars(query).all()
+    log_access(db, request, actor, patient.clinic_id, patient.id, "odontograma.ver")
     return [_to_out(e, db) for e in entries]
 
 @router.get("/{patient_id}/history", response_model=list[OdontogramEntryOut])
 def get_odontogram_history(
+    request: Request,
     patient_id: int,
     response: Response,
     tooth_fdi: int | None = Query(default=None),
@@ -159,5 +163,6 @@ def get_odontogram_history(
         query.order_by(OdontogramEntry.created_at.desc()).limit(limit).offset(offset)
     ).all()
 
+    log_access(db, request, actor, patient.clinic_id, patient.id, "odontograma.historial")
     response.headers["X-Total-Count"] = str(total)
     return [_to_out(e, db) for e in items]
