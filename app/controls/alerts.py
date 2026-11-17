@@ -12,11 +12,19 @@ from app.notifications.models import Notification
 
 TIPO_NOTIFICACION = "proximo_control"
 
-# (bandera, dias minimos, dias maximos) que faltan para el control
-VENTANAS = (
-    ("reminder_7d_sent", 4, 7),
-    ("reminder_3d_sent", 0, 3),
-)
+# Cada clinica configura cuantos dias antes sale cada aviso (0 = desactivado). Las columnas
+# conservan el nombre de cuando era fijo: reminder_7d_sent = primer aviso, reminder_3d_sent = segundo.
+
+
+def ventanas(clinic: Clinic) -> list[tuple[str, int, int, str]]:
+    """(bandera, dias minimos, dias maximos, clave del resultado) segun la configuracion de la clinica."""
+    primero, segundo = clinic.control_reminder_first_days, clinic.control_reminder_second_days
+    salida = []
+    if segundo:
+        salida.append(("reminder_3d_sent", 0, segundo, "controles_aviso_2"))
+    if primero:
+        salida.append(("reminder_7d_sent", (segundo + 1) if segundo else 0, primero, "controles_aviso_1"))
+    return salida
 
 
 def _destinatarios_personal(db: Session, clinic_id: int) -> list[User]:
@@ -65,7 +73,8 @@ def _avisar(db: Session, control: PatientControl, dias: int) -> None:
 
 def run_control_alerts(db: Session, hoy: date | None = None) -> dict:
     hoy = hoy or today_bogota()
-    resultado = {"controles_7d": 0, "controles_3d": 0, "controles_agendados_auto": 0}
+    resultado = {"controles_aviso_1": 0, "controles_aviso_2": 0, "controles_agendados_auto": 0}
+    clinicas: dict[int, Clinic] = {}
 
     candidatos = db.scalars(
         select(PatientControl).where(
@@ -75,9 +84,10 @@ def run_control_alerts(db: Session, hoy: date | None = None) -> dict:
     ).all()
 
     for control in candidatos:
+        clinic = clinicas.get(control.clinic_id) or clinicas.setdefault(control.clinic_id, db.get(Clinic, control.clinic_id))
         dias = (control.due_date - hoy).days
         ventana = next(
-            (v for v in VENTANAS if v[1] <= dias <= v[2] and not getattr(control, v[0])),
+            (v for v in ventanas(clinic) if v[1] <= dias <= v[2] and not getattr(control, v[0])),
             None,
         )
         if not ventana:
@@ -93,7 +103,9 @@ def run_control_alerts(db: Session, hoy: date | None = None) -> dict:
 
         _avisar(db, control, dias)
         setattr(control, ventana[0], True)
-        resultado["controles_7d" if ventana[0] == "reminder_7d_sent" else "controles_3d"] += 1
+        if ventana[0] == "reminder_3d_sent":
+            control.reminder_7d_sent = True  # si ya toca el segundo, el primero ya no tiene sentido
+        resultado[ventana[3]] += 1
 
     db.commit()
     return resultado

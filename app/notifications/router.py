@@ -1,14 +1,14 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_active_user, require_permission
 from app.identity.models import User
 from app.notifications.models import Notification
-from app.notifications.schemas import NotificationCreateIn, NotificationOut
+from app.notifications.schemas import NotificationCreateIn, NotificationOut, ReadAllOut, UnreadCountOut
 
 router = APIRouter(prefix="/notifications", tags=["Notificaciones"])
 
@@ -46,6 +46,35 @@ def list_my_notifications(
 
     response.headers["X-Total-Count"] = str(total)
     return [_to_out(n) for n in items]
+
+
+@router.get("/unread-count", response_model=UnreadCountOut)
+def unread_count(
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_active_user),
+):
+    """Numero para el globito de la campana."""
+    total = db.scalar(
+        select(func.count()).select_from(Notification).where(
+            Notification.user_id == actor.id, Notification.is_read.is_(False)
+        )
+    )
+    return UnreadCountOut(unread=total)
+
+
+@router.patch("/read-all", response_model=ReadAllOut)
+def mark_all_read(
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_active_user),
+):
+    """Marca como leidas todas las notificaciones del usuario actual."""
+    result = db.execute(
+        update(Notification)
+        .where(Notification.user_id == actor.id, Notification.is_read.is_(False))
+        .values(is_read=True, read_at=datetime.now(timezone.utc).replace(tzinfo=None))
+    )
+    db.commit()
+    return ReadAllOut(updated=result.rowcount)
 
 
 @router.patch("/{notification_id}/read", response_model=NotificationOut)

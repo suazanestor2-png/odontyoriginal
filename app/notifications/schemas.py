@@ -23,3 +23,11 @@ class NotificationOut(BaseModel):
     is_read: bool
     read_at: datetime | None
     created_at: datetime
+
+
+class UnreadCountOut(BaseModel):
+    unread: int
+
+
+class ReadAllOut(BaseModel):
+    updated: int

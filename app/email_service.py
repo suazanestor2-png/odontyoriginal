@@ -190,7 +190,11 @@ def send_appointment_reminder_email(
 ) -> None:
     fecha_str = scheduled_date.strftime("%d/%m/%Y")
     hora_str = start_time.strftime("%H:%M")
-    cuando = "manana" if hours_before >= 24 else "en 1 hora"
+    if hours_before % 24 == 0:
+        dias = hours_before // 24
+        cuando = "manana" if dias == 1 else f"en {dias} dias"
+    else:
+        cuando = "en 1 hora" if hours_before == 1 else f"en {hours_before} horas"
 
     safe_patient = html.escape(patient_name)
     safe_dentist = html.escape(dentist_name)

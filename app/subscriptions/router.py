@@ -82,7 +82,7 @@ def renew_subscription(
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("subscriptions.manage")),
 ):
-    """Registra el pago de una clinica y extiende su suscripcion (1 mes o 1 anio segun el plan)."""
+    """Registra el pago de una clinica y extiende su suscripcion (1 mes o 1 año segun el plan)."""
     clinic = db.get(Clinic, clinic_id)
     if not clinic:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Clinica no encontrada")

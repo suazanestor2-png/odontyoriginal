@@ -27,6 +27,12 @@ class Clinic(Base, AuditMixin):
     # Duracion por defecto de una cita (si al crearla no se envia hora de fin)
     default_appointment_minutes: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
 
+    # Recordatorios (0 = desactivado). Citas: horas antes; controles: dias antes.
+    appointment_reminder_first_hours: Mapped[int] = mapped_column(Integer, default=24, server_default="24")
+    appointment_reminder_second_hours: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    control_reminder_first_days: Mapped[int] = mapped_column(Integer, default=7, server_default="7")
+    control_reminder_second_days: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
+
     # Datos de contacto (salen en la factura PDF)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -60,6 +60,10 @@ class ClinicProfileOut(BaseModel):
     closing_time: time
     working_days: str
     default_appointment_minutes: int
+    appointment_reminder_first_hours: int
+    appointment_reminder_second_hours: int
+    control_reminder_first_days: int
+    control_reminder_second_days: int
 
 
 class ClinicProfileUpdateIn(BaseModel):
@@ -72,3 +76,8 @@ class ClinicProfileUpdateIn(BaseModel):
     closing_time: time | None = None
     working_days: str | None = Field(default=None, pattern=r"^[1-7](,[1-7]){0,6}$")
     default_appointment_minutes: int | None = Field(default=None, ge=10, le=240)
+    # Recordatorios: 0 desactiva. El primero debe ser con mas anticipacion que el segundo.
+    appointment_reminder_first_hours: int | None = Field(default=None, ge=0, le=168)
+    appointment_reminder_second_hours: int | None = Field(default=None, ge=0, le=72)
+    control_reminder_first_days: int | None = Field(default=None, ge=0, le=60)
+    control_reminder_second_days: int | None = Field(default=None, ge=0, le=30)

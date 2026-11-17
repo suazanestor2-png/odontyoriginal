@@ -229,6 +229,13 @@ def list_clinics(
 
 # ---------- Mi clinica (datos, contacto y horarios) ----------
 
+CAMPOS_OBLIGATORIOS = {
+    "opening_time", "closing_time", "working_days", "default_appointment_minutes",
+    "appointment_reminder_first_hours", "appointment_reminder_second_hours",
+    "control_reminder_first_days", "control_reminder_second_days",
+}
+
+
 def _mi_clinica(db: Session, actor: User) -> Clinic:
     if not actor.clinic_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tu usuario no pertenece a ninguna clinica")
@@ -257,6 +264,18 @@ def update_my_clinic(
     if apertura >= cierre:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La hora de apertura debe ser anterior a la de cierre")
 
+    for primero, segundo, unidad in (
+        ("appointment_reminder_first_hours", "appointment_reminder_second_hours", "horas"),
+        ("control_reminder_first_days", "control_reminder_second_days", "dias"),
+    ):
+        a = values[primero] if values.get(primero) is not None else getattr(clinic, primero)
+        b = values[segundo] if values.get(segundo) is not None else getattr(clinic, segundo)
+        if a and b and a <= b:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"El primer recordatorio ({a} {unidad}) debe ser con mas anticipacion que el segundo ({b} {unidad})",
+            )
+
     if values.get("phone"):
         try:
             values["phone"] = _telefono(values["phone"])
@@ -268,6 +287,8 @@ def update_my_clinic(
         values["working_days"] = ",".join(sorted(set(values["working_days"].split(","))))
 
     for field, value in values.items():
+        if value is None and field in CAMPOS_OBLIGATORIOS:
+            continue  # null en un campo obligatorio: se deja como estaba
         setattr(clinic, field, value)
     clinic.updated_by = actor.id
     db.commit()
