@@ -82,8 +82,9 @@ class LoginIn(BaseModel):
 
 
 class TokenOut(BaseModel):
-    access_token: str
-    refresh_token: str
+    # Vacios cuando AUTH_TOKENS_IN_BODY=false: en ese caso la sesion va solo en cookies httpOnly
+    access_token: str | None = None
+    refresh_token: str | None = None
     token_type: str = "bearer"
     must_change_password: bool = False         # NUEVO
 
@@ -100,7 +101,8 @@ class RoleChangeIn(BaseModel):
 
 
 class RefreshIn(BaseModel):
-    refresh_token: str
+    # Opcional: si no se envia, se usa la cookie odonty_refresh
+    refresh_token: str | None = None
 
 
 class ForgotPasswordIn(BaseModel):

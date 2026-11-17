@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select, update                                     # CAMBIO: update
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ from app.clinics.models import Clinic
 from app.identity.tokens import revoke_all_refresh_tokens #Funcion para reutilizar
 from app.core.validators import _telefono
 from app.identity.permissions import effective_permissions
+from app.identity.cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 
 
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
@@ -44,14 +45,16 @@ def to_user_out(user: User) -> UserOut:
     )
 
 
-def issue_tokens(db: Session, user: User) -> TokenOut:
-    access, _, _ = create_token(user.id, "access", timedelta(minutes=settings.ACCESS_TOKEN_MINUTES))
+def issue_tokens(db: Session, user: User, response: Response) -> TokenOut:
+    access, _, access_exp = create_token(user.id, "access", timedelta(minutes=settings.ACCESS_TOKEN_MINUTES))
     refresh, jti, exp = create_token(user.id, "refresh", timedelta(days=settings.REFRESH_TOKEN_DAYS))
     db.add(RefreshToken(jti=jti, user_id=user.id, expires_at=exp))
     db.commit()
+    set_auth_cookies(response, access, access_exp, refresh, exp)
+    en_body = settings.AUTH_TOKENS_IN_BODY
     return TokenOut(
-        access_token=access,
-        refresh_token=refresh,
+        access_token=access if en_body else None,
+        refresh_token=refresh if en_body else None,
         must_change_password=user.must_change_password,      # NUEVO
     )
 
@@ -61,7 +64,7 @@ def issue_tokens(db: Session, user: User) -> TokenOut:
 
 
 @router.post("/login", response_model=TokenOut | MFALoginRequiredOut)
-def login(data: LoginIn, db: Session = Depends(get_db)):
+def login(data: LoginIn, response: Response, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == data.email.lower()))
 
     if not user:
@@ -105,11 +108,11 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
         return MFALoginRequiredOut(mfa_token=mfa_token)
 
     log_event(db, "LOGIN_SUCCESS", user.id)
-    return issue_tokens(db, user)
+    return issue_tokens(db, user, response)
 
 
 @router.post("/mfa/verify", response_model=TokenOut)
-def mfa_verify(data: MFAVerifyIn, db: Session = Depends(get_db)):
+def mfa_verify(data: MFAVerifyIn, response: Response, db: Session = Depends(get_db)):
     payload = decode_token(data.mfa_token, "mfa")
     user = db.get(User, int(payload["sub"]))
 
@@ -117,12 +120,25 @@ def mfa_verify(data: MFAVerifyIn, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Codigo invalido o token vencido")
     log_event(db, "LOGIN_MFA_SUCCESS", user.id)
 
-    return issue_tokens(db, user)
+    return issue_tokens(db, user, response)
+
+
+def _refresh_token(request: Request, data: RefreshIn | None) -> str:
+    """El refresh token viene en el body (Postman/apps) o en la cookie httpOnly (navegador)."""
+    token = (data.refresh_token if data else None) or request.cookies.get(REFRESH_COOKIE)
+    if not token:
+        raise INVALID
+    return token
 
 
 @router.post("/refresh", response_model=TokenOut)
-def refresh(data: RefreshIn, db: Session = Depends(get_db)):
-    payload = decode_token(data.refresh_token, "refresh")
+def refresh(
+    request: Request,
+    response: Response,
+    data: RefreshIn | None = Body(default=None),
+    db: Session = Depends(get_db),
+):
+    payload = decode_token(_refresh_token(request, data), "refresh")
 
     stored = db.scalar(select(RefreshToken).where(RefreshToken.jti == payload["jti"]))
     if not stored or stored.revoked:
@@ -135,12 +151,25 @@ def refresh(data: RefreshIn, db: Session = Depends(get_db)):
     stored.revoked = True
     db.commit()
 
-    return issue_tokens(db, user)
+    return issue_tokens(db, user, response)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(data: RefreshIn, db: Session = Depends(get_db)):
-    payload = decode_token(data.refresh_token, "refresh")
+def logout(
+    request: Request,
+    response: Response,
+    data: RefreshIn | None = Body(default=None),
+    db: Session = Depends(get_db),
+):
+    # Siempre se borran las cookies, aunque el token ya este vencido
+    clear_auth_cookies(response)
+    token = (data.refresh_token if data else None) or request.cookies.get(REFRESH_COOKIE)
+    if not token:
+        return
+    try:
+        payload = decode_token(token, "refresh")
+    except HTTPException:
+        return
     stored = db.scalar(select(RefreshToken).where(RefreshToken.jti == payload["jti"]))
     if stored:
         stored.revoked = True

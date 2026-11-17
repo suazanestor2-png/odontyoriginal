@@ -1,19 +1,43 @@
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+import secrets
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.identity.models import User
 from app.core.security import decode_token
 
-bearer = HTTPBearer()
+bearer = HTTPBearer(auto_error=False)
+
+METODOS_SEGUROS = {"GET", "HEAD", "OPTIONS"}
 
 
 def get_current_user(
-    creds: HTTPAuthorizationCredentials = Depends(bearer),
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> User:
-    payload = decode_token(creds.credentials, "access")
+    from app.identity.cookies import ACCESS_COOKIE, CSRF_COOKIE, CSRF_HEADER
+
+    if creds is not None:
+        # Header Authorization: Bearer (Postman, apps) -> no aplica CSRF
+        token = creds.credentials
+    else:
+        # Sesion en cookie: el navegador la manda solo, por eso se exige el token CSRF al modificar datos
+        token = request.cookies.get(ACCESS_COOKIE)
+        if not token:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "No has iniciado sesion",
+                                headers={"WWW-Authenticate": "Bearer"})
+        if request.method not in METODOS_SEGUROS:
+            esperado = request.cookies.get(CSRF_COOKIE) or ""
+            recibido = request.headers.get(CSRF_HEADER) or ""
+            if not esperado or not secrets.compare_digest(esperado, recibido):
+                raise HTTPException(status.HTTP_403_FORBIDDEN, detail={
+                    "code": "CSRF_INVALID",
+                    "message": "Falta o no coincide el header X-CSRF-Token",
+                })
+
+    payload = decode_token(token, "access")
     user = db.get(User, int(payload["sub"]))
     if not user or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuario no autorizado")

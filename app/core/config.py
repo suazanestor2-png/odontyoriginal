@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080"
     BREVO_API_KEY: str = ""
     INTERNAL_CRON_SECRET: str = ""
+    # Sesion en cookies httpOnly. En local por http poner COOKIE_SECURE=false en el .env
+    COOKIE_SECURE: bool = True
+    COOKIE_SAMESITE: str = "lax"
+    # Mientras el frontend migra a cookies, los tokens tambien se devuelven en el JSON.
+    # Cuando ya use solo cookies, poner AUTH_TOKENS_IN_BODY=false en Render.
+    AUTH_TOKENS_IN_BODY: bool = True
     ENVIRONMENT: str = "development"
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
