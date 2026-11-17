@@ -23,6 +23,9 @@ PERMISSION_CODES = {
     "odontogram.view": "Ver el odontograma de un paciente",
     "odontogram.create": "Registrar un hallazgo o tratamiento en el odontograma",
     "notifications.create": "Crear una notificacion manual para un paciente o miembro del personal",
+    "controls.view": "Ver los proximos controles de los pacientes",
+    "controls.create": "Programar el proximo control de un paciente",
+    "controls.edit": "Reprogramar, agendar o cancelar un control",
 }
 
 ROLE_PERMISSIONS = {
@@ -34,17 +37,20 @@ ROLE_PERMISSIONS = {
         "clinical_history.view", "clinical_history.create",
         "odontogram.view", "odontogram.create",
         "notifications.create",
+        "controls.view", "controls.create", "controls.edit",
     ],
     "odontologo": [
         "patients.view",
         "appointments.view", "appointments.edit",
         "clinical_history.view", "clinical_history.create",
         "odontogram.view", "odontogram.create",
+        "controls.view", "controls.create", "controls.edit",
     ],
     "recepcionista": [
         "patients.view", "patients.create", "patients.edit",
         "appointments.view", "appointments.create", "appointments.edit",
         "notifications.create",
+        "controls.view", "controls.create", "controls.edit",
     ],
 }
 

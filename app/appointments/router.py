@@ -10,6 +10,7 @@ from app.appointments.schemas import (
     AppointmentRescheduleIn, AppointmentStatusIn,
 )
 from app.clinics.models import Clinic
+from app.controls.service import link_controls_to_appointment, unlink_controls_from_appointment
 from app.core.database import get_db
 from app.core.deps import require_permission
 from app.identity.audit import log_event
@@ -86,6 +87,9 @@ def create_appointment(
         origin=data.origin,
     )
     db.add(appt)
+    db.flush()
+    # Si el paciente tenia un control pendiente cerca de esta fecha, queda agendado con esta cita
+    link_controls_to_appointment(db, appt)
     db.commit()
     db.refresh(appt)
     log_event(db, "APPOINTMENT_CREATED", actor.id, f"appointment={appt.id}")
@@ -158,6 +162,8 @@ def cancel_appointment(
 
     appt.status = "cancelada"
     appt.cancellation_reason = data.cancellation_reason
+    # Los controles que dependian de esta cita vuelven a quedar pendientes
+    unlink_controls_from_appointment(db, appt)
     db.commit()
     db.refresh(appt)
     log_event(db, "APPOINTMENT_CANCELLED", actor.id, f"appointment={appt.id}")
@@ -176,6 +182,9 @@ def change_appointment_status(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Esta cita ya no se puede actualizar")
 
     appt.status = data.status
+    if data.status == "no_asistio":
+        # No vino: el control que cubria esta cita vuelve a quedar pendiente
+        unlink_controls_from_appointment(db, appt)
     db.commit()
     db.refresh(appt)
     log_event(db, "APPOINTMENT_STATUS_CHANGED", actor.id, f"appointment={appt.id} status={data.status}")

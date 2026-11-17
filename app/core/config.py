@@ -13,9 +13,10 @@ class Settings(BaseSettings):
     MFA_TOKEN_MINUTES: int = 5
     MAX_FAILED_ATTEMPTS: int = 5
     LOCK_MINUTES: int = 15
-    #SMTP_HOST: str = ""
+    SMTP_HOST: str = ""
     SMTP_PORT: int = 587
-    ##SMTP_PASSWORD: str = ""
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
     SMTP_FROM: str = ""
     OTP_MINUTES: int = 10
     MAX_OTP_ATTEMPTS: int = 5
@@ -26,7 +27,6 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
-
 
 
 settings = Settings()

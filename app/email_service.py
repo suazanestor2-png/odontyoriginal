@@ -222,3 +222,47 @@ def send_appointment_reminder_email(
 </html>
 """
     send_email(to=to_email, subject="Recordatorio de tu cita - Odonty", body=text_body, html_body=html_body)
+
+def send_control_reminder_email(
+    to_email: str,
+    patient_name: str,
+    clinic_name: str,
+    due_date,
+    days_left: int,
+    reason: str,
+) -> None:
+    fecha_str = due_date.strftime("%d/%m/%Y")
+    cuando = f"en {days_left} dias" if days_left > 1 else ("manana" if days_left == 1 else "hoy")
+
+    safe_patient = html.escape(patient_name)
+    safe_clinic = html.escape(clinic_name)
+    safe_reason = html.escape(reason)
+
+    text_body = (
+        f"Hola {patient_name},\n\n"
+        f"Se acerca tu control en {clinic_name} ({cuando}).\n"
+        f"Fecha sugerida: {fecha_str}\n"
+        f"Motivo: {reason}\n\n"
+        "Comunicate con la clinica para agendar tu cita."
+    )
+    html_body = f"""\
+<html>
+  <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 24px;">
+    <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px;">
+      <h2 style="color: #1a1a2e; margin-top: 0;">Se acerca tu control</h2>
+      <p style="color: #333; font-size: 15px;">Hola <strong>{safe_patient}</strong>,</p>
+      <p style="color: #333; font-size: 15px;">
+        Te recordamos que tienes un control en <strong>{safe_clinic}</strong> <strong>{cuando}</strong>.
+      </p>
+      <div style="text-align: center; margin: 24px 0;">
+        <span style="display: inline-block; font-size: 18px; font-weight: bold; color: #4f46e5; background: #eef2ff; padding: 14px 20px; border-radius: 8px;">
+          {fecha_str}
+        </span>
+      </div>
+      <p style="color: #333; font-size: 15px;">Motivo: {safe_reason}</p>
+      <p style="color: #666; font-size: 13px;">Comunicate con la clinica para agendar tu cita.</p>
+    </div>
+  </body>
+</html>
+"""
+    send_email(to=to_email, subject="Se acerca tu control - Odonty", body=text_body, html_body=html_body)

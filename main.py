@@ -15,6 +15,7 @@ from app.clinical_history import models as clinical_history_models  # noqa: F401
 from app.odontogram import models as odontogram_models  # noqa: F401
 from app.notifications import models as notifications_models  # noqa: F401
 from app.catalogs import models as catalogs_models  # noqa: F401
+from app.controls import models as controls_models  # noqa: F401
 
 # Routers
 from app.identity import auth_router, users_router
@@ -25,6 +26,7 @@ from app.clinical_history import router as clinical_history_router
 from app.odontogram import router as odontogram_router
 from app.notifications import router as notifications_router
 from app.catalogs import router as catalogs_router
+from app.controls import router as controls_router
 from app.core import internal_router
 
 # Seeds
@@ -79,6 +81,7 @@ app.include_router(clinical_history_router.router)
 app.include_router(odontogram_router.router)
 app.include_router(notifications_router.router)
 app.include_router(catalogs_router.router)
+app.include_router(controls_router.router)
 app.include_router(internal_router.router)
 
 

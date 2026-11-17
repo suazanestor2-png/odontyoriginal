@@ -6,6 +6,9 @@ from app.appointments.models import Appointment
 from app.clinical_history.models import ClinicalEntry
 from app.clinical_history.schemas import ClinicalEntryCreateIn, ClinicalEntryOut
 from app.core.database import get_db
+from app.controls.models import PatientControl
+from app.controls.router import crear_control
+from app.controls.service import today_bogota
 from app.core.deps import require_permission
 from app.identity.audit import log_event
 from app.identity.models import User
@@ -23,6 +26,8 @@ def _to_out(e: ClinicalEntry, db: Session) -> ClinicalEntryOut:
         creator = db.get(User, e.created_by)
         creator_name = creator.full_name if creator else None
 
+    control = db.scalar(select(PatientControl).where(PatientControl.clinical_entry_id == e.id))
+
     return ClinicalEntryOut(
         id=e.id,
         patient_id=e.patient_id,
@@ -38,6 +43,8 @@ def _to_out(e: ClinicalEntry, db: Session) -> ClinicalEntryOut:
         created_at=e.created_at,
         created_by=e.created_by,
         created_by_name=creator_name,
+        next_control_id=control.id if control else None,
+        next_control_date=control.due_date if control else None,
     )
 
 
@@ -61,6 +68,9 @@ def create_clinical_entry(
     if ya_existe:
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta cita ya tiene una consulta registrada")
 
+    if data.next_control_date and data.next_control_date <= today_bogota():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La fecha del proximo control debe ser posterior a hoy")
+
     entry = ClinicalEntry(
         clinic_id=appt.clinic_id,
         patient_id=appt.patient_id,
@@ -77,6 +87,17 @@ def create_clinical_entry(
 
     if appt.status != "atendida":
         appt.status = "atendida"
+
+    if data.next_control_date:
+        db.flush()  # necesitamos entry.id para vincular el control
+        crear_control(
+            db,
+            appt.patient,
+            data.next_control_date,
+            data.next_control_reason or "Control",
+            actor,
+            clinical_entry_id=entry.id,
+        )
 
     db.commit()
     db.refresh(entry)

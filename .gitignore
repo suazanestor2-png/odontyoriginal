@@ -2,3 +2,6 @@
 *.db
 __pycache__/
 .venv/
+Claude outputs
+Odonty_API_Contrato.pdf
+Odonty_API_Endpoints.docx

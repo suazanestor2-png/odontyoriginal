@@ -14,6 +14,7 @@ from app.clinical_history import models as clinical_history_models  # noqa: F401
 from app.odontogram import models as odontogram_models  # noqa: F401
 from app.notifications import models as notifications_models  # noqa: F401
 from app.catalogs import models as catalogs_models  # noqa: F401
+from app.controls import models as controls_models  # noqa: F401
 
 
 config = context.config
