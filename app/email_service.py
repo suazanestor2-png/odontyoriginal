@@ -61,9 +61,9 @@ def send_email(to: str, subject: str, body: str, html_body: str | None = None) -
         elif settings.SMTP_HOST:
             _send_with_smtp(to, subject, body, html_body)
         else:
-            print(f"\n[DEV EMAIL] Para: {to}")
-            print(f"[DEV EMAIL] Asunto: {subject}")
-            print(f"[DEV EMAIL] {body}\n")
+            print(f"\n[DEV EMAIL] Para: {to}", flush=True)
+            print(f"[DEV EMAIL] Asunto: {subject}", flush=True)
+            print(f"[DEV EMAIL] {body}\n", flush=True)
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")
         logger.error("Brevo rechazo el correo (%s): %s", e.code, detail)
