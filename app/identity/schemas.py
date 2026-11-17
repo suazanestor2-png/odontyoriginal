@@ -68,7 +68,7 @@ class UserCreateIn(BaseModel):                 # NUEVO
     document_number: str
     full_name: str = Field(min_length=3, max_length=150)
     phone_number: str
-    role: str = Field(pattern=r"^(admin|odontologo|recepcionista|usuario)$")
+    role: str = Field(pattern=r"^(admin|odontologo|recepcionista)$")
 
     _doc = field_validator("document_number")(validate_document)
     _phone = field_validator("phone_number")(validate_phone)
@@ -94,7 +94,7 @@ class ChangePasswordIn(BaseModel):             # NUEVO
 
 
 class RoleChangeIn(BaseModel):
-    role: str = Field(pattern=r"^(admin|odontologo|recepcionista|usuario)$")
+    role: str = Field(pattern=r"^(admin|odontologo|recepcionista)$")
 
 
 class RefreshIn(BaseModel):
@@ -144,6 +144,12 @@ class AuditLogOut(BaseModel):
 
 class ActiveChangeIn(BaseModel):
     is_active: bool
+
+class SelfUpdateIn(BaseModel):
+    """Lo que cada usuario puede cambiar de su propio perfil (el correo no: es su usuario de acceso)."""
+    full_name: str | None = Field(default=None, min_length=3, max_length=150)
+    phone_number: str | None = None
+
 
 class UserUpdateIn(BaseModel):
     full_name: str | None = Field(default=None, min_length=3, max_length=150)

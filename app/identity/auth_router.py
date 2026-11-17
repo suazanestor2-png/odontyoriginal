@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.deps import get_active_user, get_current_user              # CAMBIO: get_active_user
 from app.identity.models import RefreshToken, User
 from app.identity.schemas import LoginIn, RefreshIn, TokenOut, UserOut
-from app.identity.schemas import ChangePasswordIn                        # NUEVO
+from app.identity.schemas import ChangePasswordIn, SelfUpdateIn          # NUEVO
 from app.core.security import create_token, decode_token, hash_password, verify_password
 from app.identity.schemas import MFACodeIn, MFALoginRequiredOut, MFASetupOut, MFAVerifyIn
 from app.core.security import generate_mfa_secret, get_totp_uri, verify_mfa_code
@@ -22,6 +22,7 @@ from app.core.security import generate_otp_code, hash_otp_code
 from app.identity.schemas import ForgotPasswordIn, ResetPasswordIn
 from app.clinics.models import Clinic
 from app.identity.tokens import revoke_all_refresh_tokens #Funcion para reutilizar
+from app.core.validators import _telefono
 
 
 router = APIRouter(prefix="/auth", tags=["Autenticacion"])
@@ -149,6 +150,26 @@ def logout(data: RefreshIn, db: Session = Depends(get_db)):
 # aunque deba cambiar la clave, y asi leer must_change_password.
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
+    return to_user_out(user)
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(
+    data: SelfUpdateIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_active_user),
+):
+    """Cada usuario edita sus propios datos (nombre y telefono)."""
+    if data.full_name is not None:
+        user.full_name = data.full_name.strip()
+    if data.phone_number is not None:
+        try:
+            user.phone_number = _telefono(data.phone_number)
+        except ValueError as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    db.commit()
+    db.refresh(user)
+    log_event(db, "PROFILE_UPDATED", user.id)
     return to_user_out(user)
 
 

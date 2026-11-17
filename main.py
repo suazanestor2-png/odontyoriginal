@@ -16,6 +16,8 @@ from app.odontogram import models as odontogram_models  # noqa: F401
 from app.notifications import models as notifications_models  # noqa: F401
 from app.catalogs import models as catalogs_models  # noqa: F401
 from app.controls import models as controls_models  # noqa: F401
+from app.billing import models as billing_models  # noqa: F401
+from app.subscriptions import models as subscriptions_models  # noqa: F401
 
 # Routers
 from app.identity import auth_router, users_router
@@ -27,12 +29,17 @@ from app.odontogram import router as odontogram_router
 from app.notifications import router as notifications_router
 from app.catalogs import router as catalogs_router
 from app.controls import router as controls_router
+from app.billing import expenses_router, invoices_router, settings_router as billing_settings_router
+from app.reports import router as reports_router
+from app.subscriptions import router as subscriptions_router
 from app.core import internal_router
 
 # Seeds
 from app.identity.seed import seed_roles_and_permissions
 from app.odontogram.seed import seed_dental_catalogs
 from app.catalogs.seed import seed_cups
+from app.core.database import SessionLocal
+from app.subscriptions.service import seed_subscription_plans
 
 import time
 
@@ -52,6 +59,9 @@ async def lifespan(app: FastAPI):
     t2 = time.time()
     seed_cups()
     print(f"[startup] seed_cups: ok ({time.time() - t2:.1f}s)", flush=True)
+
+    with SessionLocal() as db:
+        seed_subscription_plans(db)
     yield
 
 
@@ -82,6 +92,11 @@ app.include_router(odontogram_router.router)
 app.include_router(notifications_router.router)
 app.include_router(catalogs_router.router)
 app.include_router(controls_router.router)
+app.include_router(invoices_router.router)
+app.include_router(expenses_router.router)
+app.include_router(billing_settings_router.router)
+app.include_router(reports_router.router)
+app.include_router(subscriptions_router.router)
 app.include_router(internal_router.router)
 
 

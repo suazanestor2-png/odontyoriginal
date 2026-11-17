@@ -1,16 +1,19 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.clinics.models import Clinic
-from app.clinics.schemas import ClinicOut, ClinicReviewIn
-from app.core.cloudinary_service import upload_pdf
+from app.clinics.schemas import (
+    ClinicListOut, ClinicOut, ClinicProfileOut, ClinicProfileUpdateIn, ClinicReviewIn,
+)
+from app.core.cloudinary_service import upload_image, upload_pdf
 from app.core.database import get_db
-from app.core.deps import require_permission
+from app.core.deps import get_active_user, require_permission
 from app.core.security import hash_password
 from app.core.validators import _documento, _password, _telefono, calcular_dv_nit
 from app.identity.audit import log_event
 from app.identity.models import Role, User
+from app.subscriptions.service import ensure_trial
 from app.email_service import (
     send_clinic_pending_notification,
     send_clinic_registration_received,
@@ -181,6 +184,9 @@ def review_clinic(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Esta clinica ya fue revisada")
 
     clinic.status = "active" if data.approve else "rejected"
+    if data.approve:
+        # Al aprobarla arranca su periodo de prueba gratis
+        ensure_trial(db, clinic.id)
     db.commit()
     db.refresh(clinic)
 
@@ -194,4 +200,106 @@ def review_clinic(
         send_clinic_review_result(admin_de_la_clinica.email, clinic.name, data.approve)
 
     log_event(db, "CLINIC_REVIEWED", actor.id, f"clinic={clinic.id} aprobada={data.approve}")
+    return clinic
+
+# ---------- Listado (super_admin) ----------
+
+@router.get("", response_model=list[ClinicListOut])
+def list_clinics(
+    response: Response,
+    status_filter: str | None = Query(
+        None, alias="status", pattern=r"^(pending_email|pending_review|active|rejected|suspended)$"
+    ),
+    q: str | None = Query(None, max_length=100, description="Nombre o NIT"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("clinics.view")),
+):
+    query = select(Clinic)
+    if status_filter:
+        query = query.where(Clinic.status == status_filter)
+    if q:
+        like = f"%{q.strip()}%"
+        query = query.where(or_(Clinic.name.ilike(like), Clinic.nit.ilike(like)))
+    total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery()))
+    response.headers["X-Total-Count"] = str(total)
+    return db.scalars(query.order_by(Clinic.name).limit(limit).offset(offset)).all()
+
+
+# ---------- Mi clinica (datos, contacto y horarios) ----------
+
+def _mi_clinica(db: Session, actor: User) -> Clinic:
+    if not actor.clinic_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tu usuario no pertenece a ninguna clinica")
+    return db.get(Clinic, actor.clinic_id)
+
+
+@router.get("/me", response_model=ClinicProfileOut)
+def get_my_clinic(
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_active_user),
+):
+    return _mi_clinica(db, actor)
+
+
+@router.patch("/me", response_model=ClinicProfileOut)
+def update_my_clinic(
+    data: ClinicProfileUpdateIn,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("clinic.settings")),
+):
+    clinic = _mi_clinica(db, actor)
+    values = data.model_dump(exclude_unset=True)
+
+    apertura = values.get("opening_time") or clinic.opening_time
+    cierre = values.get("closing_time") or clinic.closing_time
+    if apertura >= cierre:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La hora de apertura debe ser anterior a la de cierre")
+
+    if values.get("phone"):
+        try:
+            values["phone"] = _telefono(values["phone"])
+        except ValueError as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    if values.get("email"):
+        values["email"] = values["email"].strip().lower()
+    if values.get("working_days"):
+        values["working_days"] = ",".join(sorted(set(values["working_days"].split(","))))
+
+    for field, value in values.items():
+        setattr(clinic, field, value)
+    clinic.updated_by = actor.id
+    db.commit()
+    db.refresh(clinic)
+    log_event(db, "CLINIC_PROFILE_UPDATED", actor.id, f"clinic={clinic.id} campos={','.join(values)}")
+    return clinic
+
+
+MAX_LOGO_SIZE = 2 * 1024 * 1024  # 2 MB
+FIRMAS_IMAGEN = (b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff")  # PNG, JPG
+
+
+@router.post("/me/logo", response_model=ClinicProfileOut)
+def upload_my_clinic_logo(
+    logo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("clinic.settings")),
+):
+    clinic = _mi_clinica(db, actor)
+    contenido = logo.file.read(MAX_LOGO_SIZE + 1)
+    if not contenido:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "El logo esta vacio")
+    if len(contenido) > MAX_LOGO_SIZE:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "El logo no puede superar los 2 MB")
+    if not contenido.startswith(FIRMAS_IMAGEN):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "El logo debe ser una imagen PNG o JPG")
+
+    try:
+        clinic.logo_url = upload_image(contenido, prefix=f"logo_clinica_{clinic.id}")
+    except Exception:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo subir el logo, intenta de nuevo")
+    db.commit()
+    db.refresh(clinic)
+    log_event(db, "CLINIC_LOGO_UPDATED", actor.id, f"clinic={clinic.id}")
     return clinic

@@ -8,13 +8,14 @@ class AppointmentCreateIn(BaseModel):
     dentist_id: int
     scheduled_date: date
     start_time: time
-    end_time: time
+    # Opcional: si no se envia, se usa la duracion por defecto de la clinica
+    end_time: time | None = None
     reason: str = Field(min_length=3)
     origin: str = Field(default="presencial", pattern=r"^(presencial|llamada|whatsapp)$")
 
     @model_validator(mode="after")
     def _horas_validas(self):
-        if self.end_time <= self.start_time:
+        if self.end_time is not None and self.end_time <= self.start_time:
             raise ValueError("La hora de fin debe ser posterior a la hora de inicio")
         return self
 

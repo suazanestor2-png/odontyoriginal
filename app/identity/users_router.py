@@ -54,7 +54,7 @@ def create_user(
     if actor.role.name != "super_admin" and data.role not in ADMIN_ALLOWED_ROLES:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Un admin solo puede crear odontologo, recepcionista o usuario",
+            "Un admin solo puede crear odontologo o recepcionista",
         )
 
     email = data.email.lower()   # CAMBIO: el login busca en minusculas, asi que se guarda en minusculas

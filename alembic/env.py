@@ -15,6 +15,8 @@ from app.odontogram import models as odontogram_models  # noqa: F401
 from app.notifications import models as notifications_models  # noqa: F401
 from app.catalogs import models as catalogs_models  # noqa: F401
 from app.controls import models as controls_models  # noqa: F401
+from app.billing import models as billing_models  # noqa: F401
+from app.subscriptions import models as subscriptions_models  # noqa: F401
 
 
 config = context.config

@@ -29,3 +29,14 @@ def upload_pdf(file_bytes: bytes, prefix: str) -> str:
         resource_type="raw",
     )
     return result["secure_url"]
+
+
+def upload_image(file_bytes: bytes, prefix: str) -> str:
+    """Sube una imagen (ej. el logo de la clinica) y devuelve su URL publica."""
+    result = cloudinary.uploader.upload(
+        file_bytes,
+        public_id=f"{prefix}_{secrets.token_urlsafe(8)}",
+        folder="odonty/logos",
+        resource_type="image",
+    )
+    return result["secure_url"]

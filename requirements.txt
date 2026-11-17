@@ -10,3 +10,4 @@ pyotp
 alembic
 cloudinary
 python-multipart
+fpdf2

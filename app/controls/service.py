@@ -1,23 +1,17 @@
-from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.appointments.models import Appointment
 from app.controls.models import PatientControl
-
-BOGOTA_TZ = ZoneInfo("America/Bogota")
+from app.core.dates import today_bogota  # noqa: F401  (se reexporta para los otros modulos)
 
 # Una cita "cubre" un control si cae desde 14 dias antes hasta 30 dias despues de su fecha.
 # Antes de eso es otra consulta (por ejemplo, la misma cita en la que se dejo el control).
 MARGEN_ANTES = timedelta(days=14)
 MARGEN_DESPUES = timedelta(days=30)
 ESTADOS_CITA_ACTIVOS = ("programada", "confirmada")
-
-
-def today_bogota() -> date:
-    return datetime.now(BOGOTA_TZ).date()
 
 
 def find_covering_appointment(db: Session, control: PatientControl, desde: date | None = None) -> Appointment | None:

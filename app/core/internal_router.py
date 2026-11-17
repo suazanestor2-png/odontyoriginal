@@ -5,6 +5,8 @@ from app.appointments.reminders import run_appointment_reminders
 from app.core.config import settings
 from app.core.database import get_db
 from app.controls.alerts import run_control_alerts
+from app.billing.alerts import run_overdue_invoice_alerts
+from app.subscriptions.alerts import run_subscription_alerts
 
 router = APIRouter(prefix="/internal", tags=["Interno"])
 
@@ -18,4 +20,6 @@ def verify_cron_secret(x_cron_secret: str = Header(default="")) -> None:
 def run_reminders(db: Session = Depends(get_db)):
     resultado = run_appointment_reminders(db)
     resultado.update(run_control_alerts(db))
+    resultado.update(run_overdue_invoice_alerts(db))
+    resultado.update(run_subscription_alerts(db))
     return {"status": "ok", **resultado}

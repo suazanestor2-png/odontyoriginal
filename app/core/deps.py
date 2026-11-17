@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -31,11 +31,29 @@ def get_active_user(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+METODOS_LECTURA = {"GET", "HEAD", "OPTIONS"}
+
+
 def require_permission(code: str):
-    def checker(user: User = Depends(get_active_user)) -> User:   # CAMBIO: antes get_current_user
+    def checker(
+        request: Request,
+        user: User = Depends(get_active_user),   # CAMBIO: antes get_current_user
+        db: Session = Depends(get_db),
+    ) -> User:
         user_permissions = {p.code for p in user.role.permissions}
         if code not in user_permissions:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "No tienes permisos para esta accion")
+        # Suscripcion vencida (despues de los dias de gracia): la clinica queda en solo lectura
+        if request.method not in METODOS_LECTURA and user.role.name != "super_admin":
+            from app.subscriptions.service import is_read_only  # import aqui para evitar ciclos
+            if is_read_only(db, user.clinic_id):
+                raise HTTPException(
+                    status.HTTP_402_PAYMENT_REQUIRED,
+                    detail={
+                        "code": "SUBSCRIPTION_READ_ONLY",
+                        "message": "La suscripcion de la clinica vencio: solo puedes consultar hasta que se renueve",
+                    },
+                )
         return user
 
     return checker

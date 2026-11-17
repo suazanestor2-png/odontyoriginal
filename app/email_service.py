@@ -266,3 +266,26 @@ def send_control_reminder_email(
 </html>
 """
     send_email(to=to_email, subject="Se acerca tu control - Odonty", body=text_body, html_body=html_body)
+
+
+def send_subscription_alert_email(to_email: str, clinic_name: str, subject: str, message: str) -> None:
+    safe_clinic = html.escape(clinic_name)
+    safe_message = html.escape(message)
+    text_body = (
+        f"Hola,\n\n{message}\n\n"
+        f"Clinica: {clinic_name}\n\n"
+        "Para renovar comunicate con el equipo de Odonty."
+    )
+    html_body = f"""\
+<html>
+  <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 24px;">
+    <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px;">
+      <h2 style="color: #1a1a2e; margin-top: 0;">{html.escape(subject)}</h2>
+      <p style="color: #333; font-size: 15px;">Clinica: <strong>{safe_clinic}</strong></p>
+      <p style="color: #333; font-size: 15px;">{safe_message}</p>
+      <p style="color: #666; font-size: 13px;">Para renovar comunicate con el equipo de Odonty.</p>
+    </div>
+  </body>
+</html>
+"""
+    send_email(to=to_email, subject=f"{subject} - Odonty", body=text_body, html_body=html_body)

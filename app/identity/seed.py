@@ -26,6 +26,15 @@ PERMISSION_CODES = {
     "controls.view": "Ver los proximos controles de los pacientes",
     "controls.create": "Programar el proximo control de un paciente",
     "controls.edit": "Reprogramar, agendar o cancelar un control",
+    "billing.view": "Ver facturas, pagos y estados de cuenta",
+    "billing.create": "Crear facturas y registrar pagos o abonos",
+    "billing.void": "Anular facturas",
+    "billing.settings": "Configurar la numeracion y el pie de las facturas",
+    "expenses.manage": "Registrar y consultar los gastos de la clinica",
+    "reports.view": "Ver reportes y estadisticas financieras",
+    "clinic.settings": "Editar los datos, el logo y los horarios de la clinica",
+    "clinics.view": "Ver el listado de todas las clinicas",
+    "subscriptions.manage": "Gestionar planes y renovar suscripciones de las clinicas",
 }
 
 ROLE_PERMISSIONS = {
@@ -38,6 +47,8 @@ ROLE_PERMISSIONS = {
         "odontogram.view", "odontogram.create",
         "notifications.create",
         "controls.view", "controls.create", "controls.edit",
+        "billing.view", "billing.create", "billing.void", "billing.settings",
+        "expenses.manage", "reports.view", "clinic.settings",
     ],
     "odontologo": [
         "patients.view",
@@ -51,6 +62,7 @@ ROLE_PERMISSIONS = {
         "appointments.view", "appointments.create", "appointments.edit",
         "notifications.create",
         "controls.view", "controls.create", "controls.edit",
+        "billing.view", "billing.create",
     ],
 }
 

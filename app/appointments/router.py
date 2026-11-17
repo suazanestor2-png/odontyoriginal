@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -73,8 +73,16 @@ def create_appointment(
     if not dentist or dentist.role.name != "odontologo" or dentist.clinic_id != patient.clinic_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "El odontologo indicado no es valido para esta clinica")
 
-    _validar_horario_clinica(db, patient.clinic_id, data.scheduled_date, data.start_time, data.end_time)
-    _validar_cruce(db, data.dentist_id, data.scheduled_date, data.start_time, data.end_time)
+    end_time = data.end_time
+    if end_time is None:
+        minutos = db.get(Clinic, patient.clinic_id).default_appointment_minutes or 30
+        fin = datetime.combine(data.scheduled_date, data.start_time) + timedelta(minutes=minutos)
+        if fin.date() != data.scheduled_date:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "La cita no puede pasar de medianoche")
+        end_time = fin.time()
+
+    _validar_horario_clinica(db, patient.clinic_id, data.scheduled_date, data.start_time, end_time)
+    _validar_cruce(db, data.dentist_id, data.scheduled_date, data.start_time, end_time)
 
     appt = Appointment(
         clinic_id=patient.clinic_id,
@@ -82,7 +90,7 @@ def create_appointment(
         dentist_id=data.dentist_id,
         scheduled_date=data.scheduled_date,
         start_time=data.start_time,
-        end_time=data.end_time,
+        end_time=end_time,
         reason=data.reason,
         origin=data.origin,
     )
