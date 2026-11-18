@@ -98,6 +98,17 @@ def create_odontogram_entry(
     return _to_out(entry, db)
 
 
+@router.get("/catalogs")
+def list_dental_catalogs(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission("odontogram.view")),
+):
+    """Hallazgos y procedimientos dentales validos para el formulario del odontograma."""
+    def _items(model):
+        return [{"code": r.code, "name": r.name} for r in db.scalars(select(model).order_by(model.name))]
+    return {"conditions": _items(DentalCondition), "procedures": _items(DentalProcedure)}
+
+
 @router.get("/{patient_id}", response_model=list[OdontogramEntryOut])
 def get_current_odontogram(
     request: Request,
