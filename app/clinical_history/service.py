@@ -228,3 +228,33 @@ def historia_pdf(db: Session, request: Request, actor: User, patient_id: int) ->
         db.get(Clinic, patient.clinic_id), patient, consultas, odontograma, actor.full_name, now_bogota(),
     )
     return contenido, f"historia_clinica_{patient.document_number}.pdf"
+
+
+def rda_de_consulta(db: Session, request: Request, actor: User, entry_id: int) -> dict:
+    """RDA (Res. 1888 de 2025) de una consulta en HL7 FHIR R4. Version preliminar, sin validar."""
+    from app.clinical_history.rda import construir_rda
+    from app.clinics.models import Clinic
+    from app.odontogram.models import OdontogramEntry
+
+    entry = db.get(ClinicalEntry, entry_id)
+    if not entry or (actor.role.name != "super_admin" and entry.clinic_id != actor.clinic_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Entrada no encontrada")
+    appt = db.get(Appointment, entry.appointment_id)
+    procedimientos = db.scalars(
+        select(OdontogramEntry).where(OdontogramEntry.appointment_id == entry.appointment_id)
+        .order_by(OdontogramEntry.created_at)
+    ).all()
+    notas = db.scalars(
+        select(ClinicalNote).where(ClinicalNote.clinical_entry_id == entry.id).order_by(ClinicalNote.created_at)
+    ).all()
+    bundle, pendientes = construir_rda(
+        entry, appt, db.get(Patient, entry.patient_id), db.get(User, entry.dentist_id),
+        db.get(Clinic, entry.clinic_id), procedimientos, notas,
+    )
+    log_access(db, request, actor, entry.clinic_id, entry.patient_id, "historia.rda", resource_id=entry.id)
+    return {
+        "preliminar": True,
+        "aviso": "Estructura segun la guia RDA del Ministerio de Salud; pendiente de validar con el validador oficial.",
+        "pendientes": pendientes,
+        "bundle": bundle,
+    }

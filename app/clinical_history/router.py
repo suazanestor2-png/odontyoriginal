@@ -54,6 +54,17 @@ def clinical_access_log(
     return items
 
 
+@router.get("/{entry_id}/rda")
+def clinical_entry_rda(
+    request: Request,
+    entry_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("clinical_history.view")),
+):
+    """Resumen Digital de Atencion (RDA) de la consulta en HL7 FHIR R4 (version preliminar)."""
+    return service.rda_de_consulta(db, request, actor, entry_id)
+
+
 @router.get("/patients/{patient_id}/pdf")
 def clinical_history_pdf(
     request: Request,
