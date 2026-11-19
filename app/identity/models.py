@@ -52,7 +52,7 @@ class User(Base, AuditMixin):
     role: Mapped["Role"] = relationship(foreign_keys=[role_id])
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    mfa_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    mfa_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)  # cifrado con Fernet
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
     failed_attempts: Mapped[int] = mapped_column(Integer, default=0)

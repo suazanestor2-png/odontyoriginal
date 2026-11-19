@@ -11,3 +11,4 @@ alembic
 cloudinary
 python-multipart
 fpdf2
+cryptography

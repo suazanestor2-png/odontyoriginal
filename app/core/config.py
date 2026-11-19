@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     SECRET_KEY: str
+    MFA_ENCRYPTION_KEY: str = ""  # llave Fernet (base64 de 32 bytes) para cifrar el secreto MFA
     DATABASE_URL: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_MINUTES: int = 15
