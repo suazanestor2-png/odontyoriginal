@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from app.appointments.models import Appointment
 from app.controls.models import PatientControl
 from app.core.dates import today_bogota  # noqa: F401  (se reexporta para los otros modulos)
+from app.identity.models import User
+from app.patients.models import Patient
 
 # Una cita "cubre" un control si cae desde 14 dias antes hasta 30 dias despues de su fecha.
 # Antes de eso es otra consulta (por ejemplo, la misma cita en la que se dejo el control).
@@ -61,3 +63,28 @@ def unlink_controls_from_appointment(db: Session, appt: Appointment) -> int:
         control.status = "pendiente"
         control.appointment_id = None
     return len(controles)
+
+def crear_control(
+    db: Session,
+    patient: Patient,
+    due_date: date,
+    reason: str,
+    actor: User,
+    clinical_entry_id: int | None = None,
+) -> PatientControl:
+    """Crea el control (sin commit). Si el paciente ya tiene una cita que lo cubre, queda agendado."""
+    control = PatientControl(
+        clinic_id=patient.clinic_id,
+        patient_id=patient.id,
+        due_date=due_date,
+        reason=reason.strip(),
+        status="pendiente",
+        clinical_entry_id=clinical_entry_id,
+        created_by=actor.id,
+    )
+    cita = find_covering_appointment(db, control, desde=today_bogota())
+    if cita:
+        control.status = "agendado"
+        control.appointment_id = cita.id
+    db.add(control)
+    return control

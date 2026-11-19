@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.appointments.models import Appointment
 from app.controls.models import PatientControl
 from app.controls.schemas import ControlCreateIn, ControlOut, ControlUpdateIn
-from app.controls.service import find_covering_appointment, today_bogota
+from app.controls.service import crear_control, today_bogota
 from app.core.database import get_db
 from app.core.deps import require_permission
 from app.identity.audit import log_event
@@ -44,32 +44,6 @@ def _get_control_or_404(db: Session, control_id: int, actor: User) -> PatientCon
 def _validar_fecha_futura(due_date: date) -> None:
     if due_date <= today_bogota():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La fecha del control debe ser posterior a hoy")
-
-
-def crear_control(
-    db: Session,
-    patient: Patient,
-    due_date: date,
-    reason: str,
-    actor: User,
-    clinical_entry_id: int | None = None,
-) -> PatientControl:
-    """Crea el control (sin commit). Si el paciente ya tiene una cita que lo cubre, queda agendado."""
-    control = PatientControl(
-        clinic_id=patient.clinic_id,
-        patient_id=patient.id,
-        due_date=due_date,
-        reason=reason.strip(),
-        status="pendiente",
-        clinical_entry_id=clinical_entry_id,
-        created_by=actor.id,
-    )
-    cita = find_covering_appointment(db, control, desde=today_bogota())
-    if cita:
-        control.status = "agendado"
-        control.appointment_id = cita.id
-    db.add(control)
-    return control
 
 
 @router.post("", response_model=ControlOut, status_code=status.HTTP_201_CREATED)
