@@ -55,6 +55,8 @@ class ClinicProfileOut(BaseModel):
     email: str | None
     address: str | None
     city: str | None
+    reps_code: str | None = None
+    reps_site_number: str | None = None
     logo_url: str | None
     opening_time: time
     closing_time: time
@@ -72,6 +74,8 @@ class ClinicProfileUpdateIn(BaseModel):
     email: EmailStr | None = None
     address: str | None = Field(default=None, max_length=255)
     city: str | None = Field(default=None, max_length=100)
+    reps_code: str | None = Field(default=None, pattern=r"^[0-9]{10,12}$", description="Codigo de habilitacion REPS")
+    reps_site_number: str | None = Field(default=None, pattern=r"^[0-9]{2}$", description="Numero de sede en REPS, ej. 01")
     opening_time: time | None = None
     closing_time: time | None = None
     working_days: str | None = Field(default=None, pattern=r"^[1-7](,[1-7]){0,6}$")

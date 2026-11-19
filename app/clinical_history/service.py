@@ -6,14 +6,51 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.appointments.models import Appointment
+from app.catalogs.models import Cie10Code
+from app.appointments.service import validar_ventana_de_atencion
 from app.clinical_history.access import log_access
-from app.clinical_history.models import ClinicalAccessLog, ClinicalEntry
-from app.clinical_history.schemas import AccessLogOut, ClinicalEntryCreateIn, ClinicalEntryOut
+from app.clinical_history.models import ClinicalAccessLog, ClinicalEntry, ClinicalNote
+from app.clinical_history.schemas import (
+    AccessLogOut, ClarificationIn, ClarificationOut, ClinicalEntryCreateIn, ClinicalEntryOut,
+)
 from app.controls.models import PatientControl
 from app.controls.service import crear_control, today_bogota
 from app.identity.audit import log_event
 from app.identity.models import User
 from app.patients.models import Patient
+
+
+def aclaraciones(db: Session, clinical_entry_id: int | None = None,
+                 odontogram_entry_id: int | None = None) -> list[ClarificationOut]:
+    query = select(ClinicalNote)
+    if clinical_entry_id is not None:
+        query = query.where(ClinicalNote.clinical_entry_id == clinical_entry_id)
+    else:
+        query = query.where(ClinicalNote.odontogram_entry_id == odontogram_entry_id)
+    notas = db.scalars(query.order_by(ClinicalNote.created_at, ClinicalNote.id)).all()
+    return [
+        ClarificationOut(id=n.id, text=n.text, created_at=n.created_at, created_by=n.created_by,
+                         created_by_name=n.author.full_name)
+        for n in notas
+    ]
+
+
+def crear_aclaracion(db: Session, actor: User, registro, data: ClarificationIn, tipo: str) -> ClinicalNote:
+    """Agrega una nota aclaratoria a una consulta o a un registro del odontograma (sin modificarlo)."""
+    if actor.role.name == "odontologo" and registro.dentist_id != actor.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo puedes aclarar registros de tus propias citas")
+    nota = ClinicalNote(
+        clinic_id=registro.clinic_id,
+        patient_id=registro.patient_id,
+        clinical_entry_id=registro.id if tipo == "historia" else None,
+        odontogram_entry_id=registro.id if tipo == "odontograma" else None,
+        text=data.text.strip(),
+        created_by=actor.id,
+    )
+    db.add(nota)
+    db.commit()
+    log_event(db, "CLINICAL_NOTE_ADDED", actor.id, f"{tipo}={registro.id} nota={nota.id}")
+    return nota
 
 
 # created_by apunta a users.id sin relacion declarada en el modelo (a proposito, para no
@@ -38,12 +75,15 @@ def to_out(e: ClinicalEntry, db: Session) -> ClinicalEntryOut:
         motivo_consulta=e.motivo_consulta,
         examen=e.examen,
         diagnostico=e.diagnostico,
+        diagnosis_code=e.diagnosis_code,
+        diagnosis_name=e.diagnosis.name if e.diagnosis else None,
         tratamiento=e.tratamiento,
         created_at=e.created_at,
         created_by=e.created_by,
         created_by_name=creator_name,
         next_control_id=control.id if control else None,
         next_control_date=control.due_date if control else None,
+        clarifications=aclaraciones(db, clinical_entry_id=e.id),
     )
 
 
@@ -58,9 +98,16 @@ def registrar_consulta(db: Session, actor: User, data: ClinicalEntryCreateIn) ->
     if appt.status == "cancelada":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "No se puede registrar una consulta para una cita cancelada")
 
+    validar_ventana_de_atencion(appt)
+
     ya_existe = db.scalar(select(ClinicalEntry).where(ClinicalEntry.appointment_id == appt.id))
     if ya_existe:
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta cita ya tiene una consulta registrada")
+
+    codigo = data.diagnosis_code.strip().upper().replace(".", "")
+    cie = db.get(Cie10Code, codigo)
+    if not cie or not cie.is_active:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"diagnosis_code invalido o no vigente: {data.diagnosis_code}")
 
     if data.next_control_date and data.next_control_date <= today_bogota():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La fecha del proximo control debe ser posterior a hoy")
@@ -74,6 +121,7 @@ def registrar_consulta(db: Session, actor: User, data: ClinicalEntryCreateIn) ->
         motivo_consulta=data.motivo_consulta,
         examen=data.examen,
         diagnostico=data.diagnostico,
+        diagnosis_code=cie.code,
         tratamiento=data.tratamiento,
         created_by=actor.id,
     )
@@ -147,3 +195,36 @@ def ver_entrada(db: Session, request: Request, actor: User, entry_id: int) -> Cl
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Entrada no encontrada")
     log_access(db, request, actor, entry.clinic_id, entry.patient_id, "historia.ver_entrada", entry.id)
     return to_out(entry, db)
+
+
+def aclarar_consulta(db: Session, actor: User, entry_id: int, data: ClarificationIn) -> ClinicalEntryOut:
+    entry = db.get(ClinicalEntry, entry_id)
+    if not entry or (actor.role.name != "super_admin" and entry.clinic_id != actor.clinic_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Entrada no encontrada")
+    crear_aclaracion(db, actor, entry, data, "historia")
+    db.refresh(entry)
+    return to_out(entry, db)
+
+
+def historia_pdf(db: Session, request: Request, actor: User, patient_id: int) -> tuple[bytes, str]:
+    """Copia completa de la historia clinica en PDF: consultas, notas aclaratorias y odontograma."""
+    from app.clinical_history.pdf import render_historia_pdf
+    from app.clinics.models import Clinic
+    from app.core.dates import now_bogota
+    from app.odontogram import service as odontogram_service
+
+    patient = db.get(Patient, patient_id)
+    if not patient or (actor.role.name != "super_admin" and patient.clinic_id != actor.clinic_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente no encontrado")
+
+    entradas = db.scalars(
+        select(ClinicalEntry).where(ClinicalEntry.patient_id == patient_id).order_by(ClinicalEntry.created_at)
+    ).all()
+    consultas = [to_out(e, db) for e in entradas]
+    odontograma = odontogram_service.odontograma_actual(db, request, actor, patient_id)
+    log_access(db, request, actor, patient.clinic_id, patient.id, "historia.pdf")
+
+    contenido = render_historia_pdf(
+        db.get(Clinic, patient.clinic_id), patient, consultas, odontograma, actor.full_name, now_bogota(),
+    )
+    return contenido, f"historia_clinica_{patient.document_number}.pdf"

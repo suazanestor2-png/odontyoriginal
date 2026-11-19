@@ -28,6 +28,12 @@ class Patient(Base, AuditMixin):
     blood_type: Mapped[str | None] = mapped_column(String(3), nullable=True)
     address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     eps: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Datos de identificacion que pide la Res. 866 de 2021 para la interoperabilidad
+    eps_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    residence_municipality_code: Mapped[str | None] = mapped_column(String(5), nullable=True)  # DIVIPOLA
+    occupation: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ethnicity: Mapped[str | None] = mapped_column(String(25), nullable=True)
+    disability: Mapped[str | None] = mapped_column(String(15), nullable=True)
 
     # Responsable (obligatorio si el paciente es menor de edad)
     guardian_full_name: Mapped[str | None] = mapped_column(String(150), nullable=True)

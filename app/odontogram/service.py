@@ -4,8 +4,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.appointments.models import Appointment
+from app.appointments.service import validar_ventana_de_atencion
 from app.catalogs.models import CupsCode
 from app.clinical_history.access import log_access
+from app.clinical_history.schemas import ClarificationIn
+from app.clinical_history.service import aclaraciones, crear_aclaracion
 from app.identity.audit import log_event
 from app.identity.models import User
 from app.odontogram.models import DentalCondition, DentalProcedure, OdontogramEntry
@@ -38,6 +41,7 @@ def to_out(e: OdontogramEntry, db: Session) -> OdontogramEntryOut:
         created_at=e.created_at,
         created_by=e.created_by,
         created_by_name=creator_name,
+        clarifications=aclaraciones(db, odontogram_entry_id=e.id),
     )
 
 
@@ -58,6 +62,8 @@ def registrar_entrada(db: Session, actor: User, data: OdontogramEntryCreateIn) -
 
     if appt.status == "cancelada":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "No se puede registrar en una cita cancelada")
+
+    validar_ventana_de_atencion(appt)
 
     condition = None
     if data.condition_code:
@@ -153,3 +159,12 @@ def historial(db: Session, request: Request, actor: User, patient_id: int, tooth
 
     log_access(db, request, actor, patient.clinic_id, patient.id, "odontograma.historial")
     return [to_out(e, db) for e in items], total
+
+
+def aclarar_entrada(db: Session, actor: User, entry_id: int, data: ClarificationIn) -> OdontogramEntryOut:
+    entry = db.get(OdontogramEntry, entry_id)
+    if not entry or (actor.role.name != "super_admin" and entry.clinic_id != actor.clinic_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro del odontograma no encontrado")
+    crear_aclaracion(db, actor, entry, data, "odontograma")
+    db.refresh(entry)
+    return to_out(entry, db)

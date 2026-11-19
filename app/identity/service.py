@@ -55,6 +55,7 @@ def to_user_out(user: User) -> UserOut:
         is_active=user.is_active,
         phone_number=user.phone_number,                      # NUEVO
         must_change_password=user.must_change_password,      # NUEVO
+        professional_registry=user.professional_registry,
     )
 
 
@@ -371,6 +372,7 @@ def crear_usuario(db: Session, background: BackgroundTasks, actor: User, data: U
         document_number=data.document_number,
         full_name=data.full_name,
         phone_number=data.phone_number,
+        professional_registry=data.professional_registry,
         role_id=role.id,
         hashed_password=hash_password(temp_password),
         is_active=True,
@@ -505,6 +507,9 @@ def actualizar_usuario(db: Session, actor: User, user_id: int, data: UserUpdateI
 
     if data.full_name is not None:
         target.full_name = data.full_name.strip()
+
+    if data.professional_registry is not None:
+        target.professional_registry = data.professional_registry.strip().upper()
 
     db.commit()
     db.refresh(target)

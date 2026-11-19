@@ -39,7 +39,7 @@ from app.core import internal_router
 # Seeds
 from app.identity.seed import seed_roles_and_permissions
 from app.odontogram.seed import seed_dental_catalogs
-from app.catalogs.seed import seed_cups
+from app.catalogs.seed import seed_cie10, seed_cups
 from app.core.database import SessionLocal
 from app.subscriptions.service import seed_subscription_plans
 
@@ -61,6 +61,7 @@ async def lifespan(app: FastAPI):
     t2 = time.time()
     seed_cups()
     print(f"[startup] seed_cups: ok ({time.time() - t2:.1f}s)", flush=True)
+    seed_cie10()
 
     with SessionLocal() as db:
         seed_subscription_plans(db)

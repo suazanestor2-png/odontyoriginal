@@ -24,6 +24,11 @@ MENSAJE_RESPONSABLE = (
 )
 
 
+# Res. 866 de 2021: pertenencia etnica y categoria de discapacidad
+ETHNICITY_PATTERN = r"^(indigena|rom|raizal|palenquero|negro_afrocolombiano|ninguna)$"
+DISABILITY_PATTERN = r"^(ninguna|fisica|auditiva|visual|sordoceguera|intelectual|psicosocial|multiple)$"
+
+
 class PatientCreateIn(BaseModel):
     # Obligatorios (registro rapido)
     full_name: str = Field(min_length=3, max_length=150)
@@ -38,6 +43,11 @@ class PatientCreateIn(BaseModel):
     blood_type: str | None = Field(default=None, pattern=BLOOD_TYPE_PATTERN)
     address: str | None = Field(default=None, max_length=255)
     eps: str | None = Field(default=None, max_length=100)
+    eps_code: str | None = Field(default=None, pattern=r"^[A-Za-z0-9]{3,10}$", description="Codigo de la EPS")
+    residence_municipality_code: str | None = Field(default=None, pattern=r"^[0-9]{5}$", description="Codigo DIVIPOLA del municipio, ej. 05001")
+    occupation: str | None = Field(default=None, max_length=100)
+    ethnicity: str | None = Field(default=None, pattern=ETHNICITY_PATTERN)
+    disability: str | None = Field(default=None, pattern=DISABILITY_PATTERN)
     guardian_full_name: str | None = Field(default=None, max_length=150)
     guardian_document_number: str | None = None
     guardian_phone: str | None = None
@@ -67,6 +77,11 @@ class PatientUpdateIn(BaseModel):
     blood_type: str | None = Field(default=None, pattern=BLOOD_TYPE_PATTERN)
     address: str | None = Field(default=None, max_length=255)
     eps: str | None = Field(default=None, max_length=100)
+    eps_code: str | None = Field(default=None, pattern=r"^[A-Za-z0-9]{3,10}$", description="Codigo de la EPS")
+    residence_municipality_code: str | None = Field(default=None, pattern=r"^[0-9]{5}$", description="Codigo DIVIPOLA del municipio, ej. 05001")
+    occupation: str | None = Field(default=None, max_length=100)
+    ethnicity: str | None = Field(default=None, pattern=ETHNICITY_PATTERN)
+    disability: str | None = Field(default=None, pattern=DISABILITY_PATTERN)
     guardian_full_name: str | None = Field(default=None, max_length=150)
     guardian_document_number: str | None = None
     guardian_phone: str | None = None
@@ -97,6 +112,11 @@ class PatientOut(BaseModel):
     blood_type: str | None
     address: str | None
     eps: str | None
+    eps_code: str | None = None
+    residence_municipality_code: str | None = None
+    occupation: str | None = None
+    ethnicity: str | None = None
+    disability: str | None = None
     guardian_full_name: str | None
     guardian_document_number: str | None
     guardian_phone: str | None

@@ -38,4 +38,7 @@ class Clinic(Base, AuditMixin):
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Registro Especial de Prestadores (REPS): sin esto el Ministerio no acepta el RDA
+    reps_code: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    reps_site_number: Mapped[str | None] = mapped_column(String(2), nullable=True)
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

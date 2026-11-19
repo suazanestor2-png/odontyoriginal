@@ -12,11 +12,16 @@ from app.appointments.schemas import (
 )
 from app.clinics.models import Clinic
 from app.controls.service import link_controls_to_appointment, unlink_controls_from_appointment
+from app.core.dates import now_bogota
 from app.identity.audit import log_event
 from app.identity.models import User
 from app.patients.models import Patient
 
 ESTADOS_ACTIVOS = ("programada", "confirmada")
+
+# Resolucion 1995 de 1999: la historia clinica se registra de forma "simultanea o inmediatamente
+# despues" de la atencion. Se permite desde que empieza la cita hasta 2 horas despues de terminar.
+MARGEN_REGISTRO_CLINICO = timedelta(hours=2)
 
 def to_out(a: Appointment) -> AppointmentOut:
     return AppointmentOut(
@@ -53,6 +58,26 @@ def validar_cruce(db: Session, dentist_id: int, fecha: date, inicio, fin, exclui
     cruce = db.scalar(query)
     if cruce:
         raise HTTPException(status.HTTP_409_CONFLICT, "El odontologo ya tiene una cita en ese horario")
+
+
+def validar_ventana_de_atencion(appt: Appointment) -> None:
+    """Historia clinica y odontograma solo se registran durante la cita o hasta 2 horas despues."""
+    if appt.status == "no_asistio":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "El paciente no asistio a esta cita")
+    inicio = datetime.combine(appt.scheduled_date, appt.start_time)
+    limite = datetime.combine(appt.scheduled_date, appt.end_time) + MARGEN_REGISTRO_CLINICO
+    ahora = now_bogota()
+    if ahora < inicio:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"La cita aun no ha empezado: podras registrar desde el {inicio:%Y-%m-%d} a las {inicio:%H:%M}",
+        )
+    if ahora > limite:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Ya paso el tiempo para registrar en esta cita (hasta 2 horas despues de terminar). "
+            "Si necesitas corregir algo, agrega una nota aclaratoria.",
+        )
 
 
 def get_appt_or_404(db: Session, appointment_id: int, actor: User) -> Appointment:

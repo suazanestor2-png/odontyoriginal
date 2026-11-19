@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.clinical_history import service
-from app.clinical_history.schemas import AccessLogOut, ClinicalEntryCreateIn, ClinicalEntryOut
+from app.clinical_history.schemas import AccessLogOut, ClarificationIn, ClinicalEntryCreateIn, ClinicalEntryOut
 from app.core.database import get_db
 from app.core.deps import require_permission
 from app.identity.models import User
@@ -54,6 +54,22 @@ def clinical_access_log(
     return items
 
 
+@router.get("/patients/{patient_id}/pdf")
+def clinical_history_pdf(
+    request: Request,
+    patient_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("clinical_history.view")),
+):
+    """Copia de la historia clinica del paciente en PDF (para entregarsela si la solicita)."""
+    contenido, nombre = service.historia_pdf(db, request, actor, patient_id)
+    return Response(
+        content=contenido,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
 @router.get("/{entry_id}", response_model=ClinicalEntryOut)
 def get_clinical_entry(
     request: Request,
@@ -62,3 +78,14 @@ def get_clinical_entry(
     actor: User = Depends(require_permission("clinical_history.view")),
 ):
     return service.ver_entrada(db, request, actor, entry_id)
+
+
+@router.post("/{entry_id}/clarifications", response_model=ClinicalEntryOut, status_code=status.HTTP_201_CREATED)
+def add_clinical_clarification(
+    entry_id: int,
+    data: ClarificationIn,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("clinical_history.create")),
+):
+    """Nota aclaratoria: corrige o completa una consulta sin modificar lo que ya se registro."""
+    return service.aclarar_consulta(db, actor, entry_id, data)

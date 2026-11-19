@@ -15,6 +15,7 @@ class UserOut(BaseModel):
     role_name: str
     is_active: bool
     phone_number: str | None = None            # NUEVO
+    professional_registry: str | None = None
     must_change_password: bool = False         # NUEVO
     # Permisos efectivos (solo los llena /auth/me, para que el frontend muestre u oculte opciones)
     permissions: list[str] = []
@@ -66,6 +67,7 @@ class RegisterIn(BaseModel):
 
 
 class UserCreateIn(BaseModel):                 # NUEVO
+    professional_registry: str | None = Field(default=None, pattern=r"^[A-Za-z0-9-]{4,20}$", description="ReTHUS / tarjeta profesional")
     email: EmailStr
     document_number: str
     full_name: str = Field(min_length=3, max_length=150)
@@ -156,6 +158,7 @@ class SelfUpdateIn(BaseModel):
 
 
 class UserUpdateIn(BaseModel):
+    professional_registry: str | None = Field(default=None, pattern=r"^[A-Za-z0-9-]{4,20}$", description="ReTHUS / tarjeta profesional")
     full_name: str | None = Field(default=None, min_length=3, max_length=150)
     phone_number: str | None = None
     email: EmailStr | None = None

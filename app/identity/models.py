@@ -58,6 +58,8 @@ class User(Base, AuditMixin):
     failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Registro profesional en ReTHUS (tarjeta profesional) del odontologo
+    professional_registry: Mapped[str | None] = mapped_column(String(20), nullable=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     clinic_id: Mapped[int | None] = mapped_column(ForeignKey("clinics.id"), nullable=True, index=True)
     clinic: Mapped["Clinic | None"] = relationship(foreign_keys=[clinic_id])

@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.clinical_history.schemas import ClarificationOut
 from app.odontogram.models import VALID_FDI_CODES, ToothSurface
 
 
@@ -49,4 +50,5 @@ class OdontogramEntryOut(BaseModel):
     notes: str | None
     created_at: datetime
     created_by: int | None
+    clarifications: list[ClarificationOut] = []
     created_by_name: str | None

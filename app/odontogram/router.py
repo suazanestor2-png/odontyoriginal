@@ -5,6 +5,7 @@ from app.core.database import get_db
 from app.core.deps import require_permission
 from app.identity.models import User
 from app.odontogram import service
+from app.clinical_history.schemas import ClarificationIn
 from app.odontogram.schemas import OdontogramEntryCreateIn, OdontogramEntryOut
 
 router = APIRouter(prefix="/odontogram", tags=["Odontograma"])
@@ -17,6 +18,18 @@ def create_odontogram_entry(
     actor: User = Depends(require_permission("odontogram.create")),
 ):
     return service.registrar_entrada(db, actor, data)
+
+
+@router.post("/entries/{entry_id}/clarifications", response_model=OdontogramEntryOut,
+             status_code=status.HTTP_201_CREATED)
+def add_odontogram_clarification(
+    entry_id: int,
+    data: ClarificationIn,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("odontogram.create")),
+):
+    """Nota aclaratoria sobre un hallazgo o procedimiento ya registrado (no se modifica el original)."""
+    return service.aclarar_entrada(db, actor, entry_id, data)
 
 
 @router.get("/catalogs")
